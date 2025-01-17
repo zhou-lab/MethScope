@@ -71,5 +71,6 @@ Input_training <- function(summary_results,cell_type_label,number_patterns=1000,
                          watchlist = list(train = dtrain),
                          print_every_n = 20)
   bst_model$cell_type <- levels(cell_type_label_factor)
+  bst_model$npattern <- number_patterns
   return(bst_model)
 }

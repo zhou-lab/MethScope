@@ -1,7 +1,7 @@
 #' Predict cell type annotation from the trained model
 #'
 #' @param bst_model boosting model trained from ModelTrain
-#' @param predictMatrix a DMatrix object for prediction
+#' @param predictMatrix a wide cell by pattern matrix generated from GenerateInput function
 #' @return A cell by pattern matrix.
 #' @import xgboost
 #' @importFrom stats setNames
@@ -9,7 +9,10 @@
 PredictCellType <- function(bst_model, predictMatrix) {
   numberOfClasses <- bst_model$params$num_class
   cell_type_factor <- bst_model$cell_type
-  pred_result <- xgboost::predict(bst_model, newdata = predictMatrix)
+  number_patterns <- bst_model$npattern
+  predictMatrix = do.call(cbind, lapply(predictMatrix[,1:number_patterns], as.numeric))
+  dtest <- xgboost::xgb.DMatrix(data = predictMatrix)
+  pred_result <- predict(bst_model, newdata = dtest)
   pred_result <- matrix(pred_result, nrow = numberOfClasses,
                             ncol=length(pred_result)/numberOfClasses) %>%
                      t() %>% data.frame() %>%

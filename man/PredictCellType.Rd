@@ -9,7 +9,7 @@ PredictCellType(bst_model, predictMatrix)
 \arguments{
 \item{bst_model}{boosting model trained from ModelTrain}
 
-\item{predictMatrix}{a DMatrix object for prediction}
+\item{predictMatrix}{a wide cell by pattern matrix generated from GenerateInput function}
 }
 \value{
 A cell by pattern matrix.
