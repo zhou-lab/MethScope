@@ -1,0 +1,3 @@
+## PKG_CFLAGS = -Wall -finline-functions -fPIC -O3
+# -Wno-extra-semi 
+PKG_LIBS = -lncurses -lz -lm
