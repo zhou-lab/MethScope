@@ -17,10 +17,3 @@ A cell by pattern matrix.
 \description{
 Generate pattern level data for cell type annotation
 }
-\examples{
-if (.Platform$OS.type!="windows") {
-kfn = system.file("extdata", "chromhmm.cm", package = "MethScope")
-qfn = system.file("extdata", "onecell.cg", package = "MethScope")
-testEnrichment2(qfn, kfn)
-}
-}

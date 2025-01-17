@@ -4,7 +4,7 @@
 #' @param predictMatrix a DMatrix object for prediction
 #' @return A cell by pattern matrix.
 #' @import xgboost
-#' @import stats
+#' @importFrom stats setNames
 #' @export
 PredictCellType <- function(bst_model, predictMatrix) {
   numberOfClasses <- bst_model$params$num_class
@@ -25,10 +25,10 @@ PredictCellType <- function(bst_model, predictMatrix) {
 #'
 #' @param vec A vector of predicted probability for each cell type
 #' @return A numeric confidence score from 0 to 1.
-#' @import stats
+#' @importFrom stats quantile
 #' @export
 confidence_score <- function(vec){
-  percentile_95 <- quantile(vec, 0.95)
+  percentile_95 <- stats::quantile(vec, 0.95)
   values_above_95th <- vec[vec >= percentile_95]
   max_value <- max(vec)
   metric <- max_value / sum(values_above_95th)

@@ -7,12 +7,7 @@
 #' @import dplyr
 #' @importFrom stringr str_extract
 #' @importFrom tidyr spread
-#' @examples
-#' if (.Platform$OS.type!="windows") {
-#' kfn = system.file("extdata", "chromhmm.cm", package = "MethScope")
-#' qfn = system.file("extdata", "onecell.cg", package = "MethScope")
-#' testEnrichment2(qfn, kfn)
-#' }
+#' @importFrom utils read.table
 #' @export
 GenerateInput <- function(query_fn, knowledge_fn) {
 
@@ -22,7 +17,7 @@ GenerateInput <- function(query_fn, knowledge_fn) {
   }
   yame_result <- .Call("yame_summary_cfunc", query_fn, knowledge_fn)
 
-  summary_results <- read.table(text = paste(yame_result, collapse = "\n"), header = TRUE)
+  summary_results <- utils::read.table(text = paste(yame_result, collapse = "\n"), header = TRUE)
 
   summary_results <- summary_results %>%
     dplyr::select('Query','Mask','Beta') %>%
