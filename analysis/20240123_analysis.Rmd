@@ -1,0 +1,23 @@
+---
+title: "20240123_analysis"
+output: html_document
+date: "2025-01-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Andrew Adey mouse brain sciMETv2
+
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg",reference_pattern)
+prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern)
+### visualize the result on lower embedding
+fixed_window <- system.file("extdata", "Win100k.mouse.cm", package = "MethScope")
+umap_plot <- PlotUMAP("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg",
+                            fixed_window,prediction_result)
+umap_plot
+
+```

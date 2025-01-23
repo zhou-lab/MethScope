@@ -2,7 +2,7 @@
 #'
 #' @param bst_model boosting model trained from ModelTrain
 #' @param predictMatrix a wide cell by pattern matrix generated from GenerateInput function
-#' @return A cell by pattern matrix.
+#' @return A cell by pattern matrix with confidence score and labeled cell type.
 #' @import xgboost
 #' @importFrom stats setNames
 #' @export
@@ -21,6 +21,7 @@ PredictCellType <- function(bst_model, predictMatrix) {
   pred_result$prediction_label <- factor(sapply(pred_result$max_prob, function(x) num_to_factor[as.character(x)]), levels = cell_type_factor)
   confiscore <- apply(pred_result[,1:numberOfClasses], 1, confidence_score)
   pred_result$confidence_score <- confiscore
+  rownames(prediction_result) <- rownames(predictMatrix)
   pred_result
 }
 

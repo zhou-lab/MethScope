@@ -7,9 +7,9 @@
 GenerateInput(query_fn, knowledge_fn)
 }
 \arguments{
-\item{query_fn}{File path to query}
+\item{query_fn}{File path to query .cg}
 
-\item{knowledge_fn}{File path to pattern file}
+\item{knowledge_fn}{File path to pattern file .cm}
 }
 \value{
 A cell by pattern matrix.

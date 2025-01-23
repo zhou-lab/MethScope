@@ -1,7 +1,7 @@
 #' Generate pattern level data for cell type annotation
 #'
-#' @param query_fn File path to query
-#' @param knowledge_fn File path to pattern file
+#' @param query_fn File path to query .cg
+#' @param knowledge_fn File path to pattern file .cm
 #' @return A cell by pattern matrix.
 #' @useDynLib MethScope, .registration = TRUE
 #' @import dplyr

@@ -12,7 +12,7 @@ PredictCellType(bst_model, predictMatrix)
 \item{predictMatrix}{a wide cell by pattern matrix generated from GenerateInput function}
 }
 \value{
-A cell by pattern matrix.
+A cell by pattern matrix with confidence score and labeled cell type.
 }
 \description{
 Predict cell type annotation from the trained model
