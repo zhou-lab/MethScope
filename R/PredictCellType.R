@@ -5,6 +5,12 @@
 #' @return A cell by pattern matrix with confidence score and labeled cell type.
 #' @import xgboost
 #' @importFrom stats setNames
+#' @examples
+#' # Use the example.cg file included in the package
+#' reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+#' example_file <- system.file("extdata", "example.cg", package = "yourpackage")
+#' result <- GenerateInput(example_file,reference_pattern)
+#' prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,result)
 #' @export
 PredictCellType <- function(bst_model, predictMatrix) {
   numberOfClasses <- bst_model$params$num_class

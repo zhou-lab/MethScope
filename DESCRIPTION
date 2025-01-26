@@ -16,4 +16,6 @@ Imports:
   xgboost,
   caret,
   doParallel,
-  parallel
+  parallel,
+  ggplot2,
+  uwot

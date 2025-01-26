@@ -8,6 +8,11 @@
 #' @importFrom stringr str_extract
 #' @importFrom tidyr spread
 #' @importFrom utils read.table
+#' @examples
+#' # Use the example.cg file included in the package
+#' reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+#' example_file <- system.file("extdata", "example.cg", package = "yourpackage")
+#' result <- GenerateInput(example_file,reference_pattern)
 #' @export
 GenerateInput <- function(query_fn, knowledge_fn) {
 
