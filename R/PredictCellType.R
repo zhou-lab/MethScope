@@ -5,29 +5,31 @@
 #' @return A cell by pattern matrix with confidence score and labeled cell type.
 #' @import xgboost
 #' @importFrom stats setNames
+#' @importFrom dplyr mutate
 #' @examples
 #' # Use the example.cg file included in the package
 #' reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
-#' example_file <- system.file("extdata", "example.cg", package = "yourpackage")
+#' example_file <- system.file("extdata", "example.cg", package = "MethScope")
 #' result <- GenerateInput(example_file,reference_pattern)
-#' prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,result)
+#' prediction_result <- PredictCellType(MethScope:::Liu2021_MouseBrain_P1000,result)
 #' @export
 PredictCellType <- function(bst_model, predictMatrix) {
   numberOfClasses <- bst_model$params$num_class
   cell_type_factor <- bst_model$cell_type
   number_patterns <- bst_model$npattern
+  sample_names <- rownames(predictMatrix)
   predictMatrix = do.call(cbind, lapply(predictMatrix[,1:number_patterns], as.numeric))
   dtest <- xgboost::xgb.DMatrix(data = predictMatrix)
   pred_result <- predict(bst_model, newdata = dtest)
   pred_result <- matrix(pred_result, nrow = numberOfClasses,
                             ncol=length(pred_result)/numberOfClasses) %>%
                      t() %>% data.frame() %>%
-                     mutate(max_prob = max.col(., "last"))
+                     dplyr::mutate(max_prob = max.col(., "last"))
   num_to_factor <- stats::setNames(cell_type_factor, 1:length(cell_type_factor))
   pred_result$prediction_label <- factor(sapply(pred_result$max_prob, function(x) num_to_factor[as.character(x)]), levels = cell_type_factor)
   confiscore <- apply(pred_result[,1:numberOfClasses], 1, confidence_score)
   pred_result$confidence_score <- confiscore
-  rownames(prediction_result) <- rownames(predictMatrix)
+  rownames(pred_result) <- sample_names
   pred_result
 }
 

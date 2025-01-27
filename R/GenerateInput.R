@@ -4,14 +4,15 @@
 #' @param knowledge_fn File path to pattern file .cm
 #' @return A cell by pattern matrix.
 #' @useDynLib MethScope, .registration = TRUE
-#' @import dplyr
+#' @importFrom dplyr select
 #' @importFrom stringr str_extract
 #' @importFrom tidyr spread
 #' @importFrom utils read.table
+#' @importFrom magrittr %>%
 #' @examples
 #' # Use the example.cg file included in the package
 #' reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
-#' example_file <- system.file("extdata", "example.cg", package = "yourpackage")
+#' example_file <- system.file("extdata", "example.cg", package = "MethScope")
 #' result <- GenerateInput(example_file,reference_pattern)
 #' @export
 GenerateInput <- function(query_fn, knowledge_fn) {

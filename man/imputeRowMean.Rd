@@ -7,7 +7,7 @@
 imputeRowMean(mtx)
 }
 \arguments{
-\item{A}{cell by 100K window data frame with missing values}
+\item{mtx}{A cell by 100K window data frame with missing values}
 }
 \value{
 A cell by 100K window data frame with imputed values

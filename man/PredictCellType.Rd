@@ -17,3 +17,10 @@ A cell by pattern matrix with confidence score and labeled cell type.
 \description{
 Predict cell type annotation from the trained model
 }
+\examples{
+# Use the example.cg file included in the package
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+example_file <- system.file("extdata", "example.cg", package = "MethScope")
+result <- GenerateInput(example_file,reference_pattern)
+prediction_result <- PredictCellType(MethScope:::Liu2021_MouseBrain_P1000,result)
+}

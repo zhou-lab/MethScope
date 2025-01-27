@@ -17,3 +17,9 @@ A cell by pattern matrix.
 \description{
 Generate pattern level data for cell type annotation
 }
+\examples{
+# Use the example.cg file included in the package
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+example_file <- system.file("extdata", "example.cg", package = "MethScope")
+result <- GenerateInput(example_file,reference_pattern)
+}

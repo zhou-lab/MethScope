@@ -55,7 +55,7 @@ PlotUMAP <- function(query_fn, knowledge_fn,prediction_result,n_component=30,see
 
 #' Impute missing value for 100K window matrix
 #'
-#' @param  A cell by 100K window data frame with missing values
+#' @param mtx A cell by 100K window data frame with missing values
 #' @return A cell by 100K window data frame with imputed values
 #' @importFrom stats quantile
 #' @export
