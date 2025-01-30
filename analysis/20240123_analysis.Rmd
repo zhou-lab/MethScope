@@ -68,7 +68,17 @@ subset_cells_label <- subset_cells_label$MajorType
 PlotConfusion(prediction_result,subset_cells_label)
 ggsave("~/figures/fuh1/20250130_Liu2021_confusion.pdf",width=6,height=5.5)
 
+### confidence score plot
+prediction_result$actual_label <- subset_cells_label
+df <- prediction_result %>%
+  mutate(prediction_status = ifelse(prediction_label == actual_label, "Correct", "Incorrect"))
 
+# Create violin plot
+ggplot(df, aes(x = prediction_status, y = confidence_score, fill = prediction_status)) +
+  geom_boxplot(outlier.shape = NA) +  # Optional: adds boxplot for better visualization
+  scale_fill_manual(values = c("Correct" = "#7ac7e2", "Incorrect" = "#e37163")) + 
+  labs(title = "", x = "Prediction Status", y = "Confidence Score") +
+  theme_bw() + theme(legend.position = "None") + ylim(0,1)+theme()
 ```
 
 ### Spatial mouse brain P21
