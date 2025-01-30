@@ -9,17 +9,20 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ### Nichols mouse brain sciMETv2
-
 ```{r}
 reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg",reference_pattern)
 prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern)
 ### visualize the result on lower embedding
-fixed_window <- system.file("extdata", "Win100k.mouse.cm", package = "MethScope")
-umap_plot <- PlotUMAP("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg",
-                            fixed_window,prediction_result)
-umap_plot
-ggsave("~/figures/fuh1/20250123_Nichols2022_umap.pdf",width=5,height=4)
+umap_plot <- PlotUMAP(input_pattern,prediction_result)
+umap_plot[[1]]
+#ggsave("~/figures/fuh1/20250123_Nichols2022_umap_pattern.pdf",width=4,height=4)
+
+# fixed_window <- system.file("extdata", "Win100k.mouse.cm", package = "MethScope")
+# umap_plot <- PlotUMAP_fixedwindow("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg",
+#                             fixed_window,prediction_result)
+umap_plot[[1]]
+#ggsave("~/figures/fuh1/20250123_Nichols2022_umap_100k.pdf",width=4,height=4)
 ```
 
 ### Fabyanic mouse brain Joint-snhmC-seq
@@ -29,10 +32,72 @@ reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg",reference_pattern)
 prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern)
 ### visualize the result on lower embedding
-fixed_window <- system.file("extdata", "Win100k.mouse.cm", package = "MethScope")
+# fixed_window <- system.file("extdata", "Win100k.mouse.cm", package = "MethScope")
+# umap_plot <- PlotUMAP("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg",
+#                             fixed_window,prediction_result)
 umap_plot <- PlotUMAP("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg",
-                            fixed_window,prediction_result)
-umap_plot
+                            reference_pattern,prediction_result)
+umap_plot[[1]]
 ggsave("~/figures/fuh1/20250123_Fabyanic2023_umap.pdf",width=5,height=4)
+```
 
+### Liu2021 mouse brain
+
+```{r}
+celltype <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
+train <- read.table("~/cell_type/20240322_Liu2021_training_sample.txt",sep="\t")
+left_over_cells <- celltype %>% filter(!SampleID %in% train$V1)
+output_sample <- left_over_cells$SampleID
+write.table(output_sample,"~/cell_type/20250130_Liu2021.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+```
+
+yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250130_Liu2021.txt -o ~/intermediate/20250130_Liu2021.cg
+
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/intermediate/20250130_Liu2021_subset.cg",reference_pattern)
+prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern)
+umap_plot <- PlotUMAP(input_pattern,prediction_result)
+umap_plot[[1]]
+#ggsave("~/figures/fuh1/20250130_Liu2021_umap.pdf",width=6.5,height=4)
+
+subset_cells <- read.table("~/cell_type/20240826_Liu2021_test_sample.txt")
+idx <- match(subset_cells$V1, celltype$SampleID)
+subset_cells_label <- celltype[idx,]
+subset_cells_label <- subset_cells_label$MajorType
+PlotConfusion(prediction_result,subset_cells_label)
+ggsave("~/figures/fuh1/20250130_Liu2021_confusion.pdf",width=6,height=5.5)
+
+
+```
+
+### Spatial mouse brain P21
+
+```{r}
+barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240331_B14D_barcodesK.rds")
+#write.table(barcodes,"~/cell_type/20250130_P21.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLB14DM/SpMETSLB14DM_filter.cg",reference_pattern)
+prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = F)
+umap_plot <- PlotUMAP(input_pattern,prediction_result)
+umap_plot[[1]]
+
+group <- as.factor(prediction_result$prediction_label)
+spatial_coordinate <- read.table("~/SpM/spatial_barcodes.txt",sep="\t")
+idx <- match(rownames(prediction_result),spatial_coordinate$V4)
+spatial_coordinate_filter <- spatial_coordinate[idx,]
+spatial_heatmap <- cbind(spatial_coordinate_filter$V2,spatial_coordinate_filter$V3,group)
+spatial_heatmap <- as.data.frame(spatial_heatmap)
+spatial_heatmap$V1 <- as.factor(spatial_heatmap$V1)
+spatial_heatmap$V2 <- as.factor(spatial_heatmap$V2)
+spatial_heatmap$group <- factor(spatial_heatmap$group, levels = 1:41, labels = levels(group))
+
+ggplot(spatial_heatmap, aes(V2, V1))+
+  geom_point(aes(color=group),size = 2) +
+  theme_bw() + xlab("") + ylab("")+scale_x_discrete(limits = rev(levels(spatial_heatmap$V2)))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.border = element_blank())+
+  guides(color=guide_legend(title="Cluster"))+
+  coord_fixed(ratio=1)+ scale_y_discrete(limits=rev)+#+scale_color_discrete(na.value="white")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```

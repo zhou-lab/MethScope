@@ -2,21 +2,12 @@
 % Please edit documentation in R/VisualizeOutput.R
 \name{PlotUMAP}
 \alias{PlotUMAP}
-\title{Generate UMAP for the final prediction based on 100kb bin widows}
+\title{Generate UMAP for the final prediction based on cell patterns}
 \usage{
-PlotUMAP(
-  query_fn,
-  knowledge_fn,
-  prediction_result,
-  n_component = 30,
-  seed = 123,
-  ...
-)
+PlotUMAP(predictMatrix, prediction_result, n_component = 30, seed = 123, ...)
 }
 \arguments{
-\item{query_fn}{File path to query .cg}
-
-\item{knowledge_fn}{File path to 100bk bins window}
+\item{predictMatrix}{a wide cell by pattern matrix generated from GenerateInput function}
 
 \item{prediction_result}{Prediction result from PredictCellType}
 
@@ -27,8 +18,8 @@ PlotUMAP(
 \item{...}{Additional arguments passed to \code{uwot::umap} (e.g., \code{n_neighbors}, \code{metric}).}
 }
 \value{
-A ggplot2 UMAP object.
+A list of two ggplot2 UMAP object.
 }
 \description{
-Generate UMAP for the final prediction based on 100kb bin widows
+Generate UMAP for the final prediction based on cell patterns
 }

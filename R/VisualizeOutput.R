@@ -1,12 +1,11 @@
-#' Generate UMAP for the final prediction based on 100kb bin widows
+#' Generate UMAP for the final prediction based on cell patterns
 #'
-#' @param query_fn File path to query .cg
-#' @param knowledge_fn File path to 100bk bins window
+#' @param predictMatrix a wide cell by pattern matrix generated from GenerateInput function
 #' @param prediction_result Prediction result from PredictCellType
 #' @param n_component Number of PCA components to use (Default: 30)
 #' @param seed A number for random seed (Default: 123)
 #' @param ... Additional arguments passed to `uwot::umap` (e.g., `n_neighbors`, `metric`).
-#' @return A ggplot2 UMAP object.
+#' @return A list of two ggplot2 UMAP object.
 #' @useDynLib MethScope, .registration = TRUE
 #' @import ggplot2
 #' @import uwot
@@ -15,7 +14,56 @@
 #' @importFrom utils read.table
 #' @importFrom stats prcomp
 #' @export
-PlotUMAP <- function(query_fn, knowledge_fn,prediction_result,n_component=30,seed=123,...) {
+PlotUMAP <- function(predictMatrix,prediction_result,n_component=30,seed=123,...) {
+  set.seed(seed)
+  summary_results <- predictMatrix
+  summary_results$cell_type <- prediction_result$prediction_label
+  summary_results_value <- summary_results %>% dplyr::select(-"cell_type")
+  summary_results_value <- do.call(cbind, lapply(summary_results_value[,1:ncol(summary_results_value)], as.numeric))
+  summary_results_value <- imputeRowMean(as.data.frame(summary_results_value))
+  
+  pc <- stats::prcomp(as.data.frame(summary_results_value),scale=TRUE)
+  pc_data <- pc$x
+  UMAP_results = uwot::umap(pc_data[,1:n_component], n_neighbors = 10L, n_components = 2L, metric = "cosine",
+                            n_epochs = NULL,learning_rate = 1, min_dist = 0.3,spread = 1,set_op_mix_ratio = 1,
+                            local_connectivity = 1L,...)
+  UMAP_results = as.data.frame(UMAP_results)
+  colnames(UMAP_results) = c("UMAP1", "UMAP2")
+  df_plot <- cbind(UMAP_results$UMAP1,UMAP_results$UMAP2)
+  df_plot <- as.data.frame(df_plot)
+  df_plot$col <- summary_results$cell_type
+  df_plot$col <- as.factor(df_plot$col)
+  df_plot$conf <- prediction_result$confidence_score
+  colnames(df_plot) <- c("UMAP1","UMAP2","color","conf")
+  plot1 <- ggplot(df_plot) + geom_point(aes(UMAP1,UMAP2,fill=color),pch = 21,size = 1, stroke=NA) +
+    theme_bw()+labs(fill="")+theme(panel.grid.major = element_blank(),
+                                   panel.grid.minor = element_blank(),
+                                   panel.background = element_blank())
+  plot2 <- ggplot(df_plot) + geom_point(aes(UMAP1,UMAP2,fill=conf),pch = 21,size = 1, stroke=NA) +
+    theme_bw()+labs(fill="")+theme(panel.grid.major = element_blank(),
+                                   panel.grid.minor = element_blank(),
+                                   panel.background = element_blank())
+  list(plot1,plot2)
+}
+
+#' Generate UMAP for the final prediction based on fixed window eg.100kb bin widows
+#'
+#' @param query_fn File path to query .cg
+#' @param knowledge_fn File path to 100bk bins window or reference pattern 
+#' @param prediction_result Prediction result from PredictCellType
+#' @param n_component Number of PCA components to use (Default: 30)
+#' @param seed A number for random seed (Default: 123)
+#' @param ... Additional arguments passed to `uwot::umap` (e.g., `n_neighbors`, `metric`).
+#' @return A list of two ggplot2 UMAP object.
+#' @useDynLib MethScope, .registration = TRUE
+#' @import ggplot2
+#' @import uwot
+#' @importFrom stringr str_extract
+#' @importFrom tidyr spread
+#' @importFrom utils read.table
+#' @importFrom stats prcomp
+#' @export
+PlotUMAP_fixedwindow <- function(query_fn, knowledge_fn,prediction_result,n_component=30,seed=123,...) {
   set.seed(seed)
   stopifnot(is.character(query_fn), is.character(knowledge_fn))
   if (.Platform$OS.type == "windows") {
@@ -45,12 +93,49 @@ PlotUMAP <- function(query_fn, knowledge_fn,prediction_result,n_component=30,see
   df_plot <- as.data.frame(df_plot)
   df_plot$col <- summary_results$cell_type
   df_plot$col <- as.factor(df_plot$col)
-  colnames(df_plot) <- c("UMAP1","UMAP2","color")
-  plot <- ggplot(df_plot) + geom_point(aes(UMAP1,UMAP2,fill=color),pch = 21,size = 1, stroke=NA) +
+  df_plot$conf <- prediction_result$confidence_score
+  colnames(df_plot) <- c("UMAP1","UMAP2","color","conf")
+  plot1 <- ggplot(df_plot) + geom_point(aes(UMAP1,UMAP2,fill=color),pch = 21,size = 1, stroke=NA) +
                           theme_bw()+labs(fill="")+theme(panel.grid.major = element_blank(),
                                                          panel.grid.minor = element_blank(),
                                                          panel.background = element_blank())
-  plot
+  plot2 <- ggplot(df_plot) + geom_point(aes(UMAP1,UMAP2,fill=conf),pch = 21,size = 1, stroke=NA) +
+                          theme_bw()+labs(fill="")+theme(panel.grid.major = element_blank(),
+                                   panel.grid.minor = element_blank(),
+                                   panel.background = element_blank())
+  list(plot1,plot2)
+}
+
+#' Generate confusion table for the final prediction 
+#'
+#' @param prediction_result Prediction result from PredictCellType
+#' @param actual_label Ground truth cell label
+#' @return A ggplot2 confusion table object.
+#' @import ggplot2
+#' @importFrom caret confusionMatrix
+#' @export
+PlotConfusion <- function(prediction_result,actual_label) {
+  confusion_matrix <- caret::confusionMatrix(factor(prediction_result$prediction_label),
+                                      factor(actual_label),mode = "everything")
+  cm_table <- as.data.frame(confusion_matrix$table)
+  
+  # Compute accuracy
+  accuracy_rate <- sum(diag(confusion_matrix$table)) / sum(confusion_matrix$table)
+  
+  # Rename columns for ggplot
+  colnames(cm_table) <- c("Actual", "Predicted", "Freq")
+  
+  # Plot using ggplot2
+  p1 <- ggplot(cm_table, aes(x = Predicted, y = Actual, fill = Freq)) +
+    geom_tile(color = "white") +
+    scale_fill_distiller(direction=1)+
+    labs(title = paste0("Confusion Matrix (Accuracy: ", round(accuracy_rate, 3), ")"),
+         x = "Predicted Label", y = "Actual Label", fill = "") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+          axis.text.x = element_text(size = 8, angle = 90, vjust = 0.5, hjust = 1),  # Rotated and smaller
+          axis.text.y = element_text(size = 8),legend.position = "right")
+  p1
 }
 
 #' Impute missing value for 100K window matrix

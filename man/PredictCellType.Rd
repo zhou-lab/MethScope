@@ -4,12 +4,16 @@
 \alias{PredictCellType}
 \title{Predict cell type annotation from the trained model}
 \usage{
-PredictCellType(bst_model, predictMatrix)
+PredictCellType(bst_model, predictMatrix, smooth = TRUE, KNeighbor = 5)
 }
 \arguments{
-\item{bst_model}{boosting model trained from ModelTrain}
+\item{bst_model}{The boosting model trained from ModelTrain}
 
-\item{predictMatrix}{a wide cell by pattern matrix generated from GenerateInput function}
+\item{predictMatrix}{A wide cell by pattern matrix generated from GenerateInput function}
+
+\item{smooth}{A Boolean variable to indicate whether smooth the matrix (Default: TRUE)}
+
+\item{KNeighbor}{number of knn neighbors to use for smoothing (Default: 5)}
 }
 \value{
 A cell by pattern matrix with confidence score and labeled cell type.
