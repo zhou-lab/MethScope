@@ -9,6 +9,7 @@
 #' @importFrom tidyr spread
 #' @importFrom utils read.table
 #' @importFrom magrittr %>%
+#' @importFrom data.table fread
 #' @examples
 #' # Use the example.cg file included in the package
 #' reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
@@ -21,10 +22,12 @@ GenerateInput <- function(query_fn, knowledge_fn) {
   if (.Platform$OS.type == "windows") {
     stop("Testing sequencing data does not support Windows.")
   }
-  yame_result <- .Call("yame_summary_cfunc", query_fn, knowledge_fn)
-
-  summary_results <- utils::read.table(text = paste(yame_result, collapse = "\n"), header = TRUE)
-
+  #yame_result <- .Call("yame_summary_cfunc", query_fn, knowledge_fn)
+  
+  temp_file <- tempfile(fileext = ".txt")
+  .Call("yame_summary_cfunc", query_fn, knowledge_fn, temp_file)
+  summary_results <- data.table::fread(temp_file, header = TRUE)
+  on.exit(unlink(temp_file), add = TRUE)
   summary_results <- summary_results %>%
     dplyr::select('Query','Mask','Beta') %>%
     tidyr::spread(key=Mask,value=Beta,fill = NA)

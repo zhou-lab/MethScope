@@ -3,11 +3,11 @@
 #include <R_ext/Rdynload.h>
 
 // Declare the function
-extern SEXP yame_summary_cfunc(SEXP, SEXP);
+extern SEXP yame_summary_cfunc(SEXP, SEXP, SEXP);
 
 // Register the function
 static const R_CallMethodDef CallEntries[] = {
-    {"yame_summary_cfunc", (DL_FUNC) &yame_summary_cfunc, 2},
+    {"yame_summary_cfunc", (DL_FUNC) &yame_summary_cfunc, 3},
     {NULL, NULL, 0}
 };
 

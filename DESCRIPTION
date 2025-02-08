@@ -20,4 +20,5 @@ Imports:
   ggplot2,
   uwot,
   magrittr,
-  FNN
+  FNN,
+  data.table

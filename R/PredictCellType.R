@@ -2,7 +2,7 @@
 #'
 #' @param bst_model The boosting model trained from ModelTrain
 #' @param predictMatrix A wide cell by pattern matrix generated from GenerateInput function
-#' @param smooth A Boolean variable to indicate whether smooth the matrix (Default: TRUE)
+#' @param smooth A Boolean variable to indicate whether smooth the matrix (Default: FALSE)
 #' @param KNeighbor number of knn neighbors to use for smoothing (Default: 5)
 #' @return A cell by pattern matrix with confidence score and labeled cell type.
 #' @import xgboost
@@ -15,7 +15,7 @@
 #' result <- GenerateInput(example_file,reference_pattern)
 #' prediction_result <- PredictCellType(MethScope:::Liu2021_MouseBrain_P1000,result)
 #' @export
-PredictCellType <- function(bst_model, predictMatrix,smooth=TRUE,KNeighbor=5) {
+PredictCellType <- function(bst_model, predictMatrix,smooth=FALSE,KNeighbor=5) {
   numberOfClasses <- bst_model$params$num_class
   cell_type_factor <- bst_model$cell_type
   number_patterns <- bst_model$npattern

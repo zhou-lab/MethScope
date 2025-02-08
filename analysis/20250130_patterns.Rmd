@@ -1,0 +1,138 @@
+---
+title: "20250130_patterns"
+output: html_document
+date: "2025-01-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Pattern frequency and enrichment
+
+```{r}
+reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
+#Calculate the frequency of each string
+stringFrequency <- table(reference_set)
+frequencyDF <- as.data.frame(stringFrequency)
+#Sort the data frame by frequency
+sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
+sortedFrequency$pattern <- paste0("P",seq(1:nrow(sortedFrequency)))
+count1s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "1"))
+one_one <- sortedFrequency[which(count1s==1),]
+idx_file <- read.table("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg.idx",sep="\t")
+row_name <- sapply(as.character(one_one$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == "1")])
+one_one$cell_type <- row_name
+  
+data_visualize <- one_one
+data_visualize$reference_set <- factor(data_visualize$reference_set,levels = data_visualize$reference_set)
+data_visualize$cell_type <- factor(data_visualize$cell_type,levels = data_visualize$cell_type)
+
+ggplot(data_visualize, aes(x=cell_type, y=Freq)) + 
+  geom_bar(stat = "identity")+ 
+  theme_bw() + theme(axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+ggtitle("Liu 2021 Major Cell Type Hypomethylation Patterns")
+#ggsave("~/figures/fuh1/20240322_Liu2021_major_hypo.pdf",width=6,height=4)
+
+
+```
+
+### Visualize unique hypo/hyper per cell type pattern frequency
+```{r}
+reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
+stringFrequency <- table(reference_set)
+frequencyDF <- as.data.frame(stringFrequency)
+sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
+sortedFrequency$pattern <- paste0("P",seq(1:nrow(sortedFrequency)))
+
+count1s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "1"))
+one_one <- sortedFrequency[which(count1s==1),]
+idx_file <- read.table("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg.idx",sep="\t")
+row_name <- sapply(as.character(one_one$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == "1")])
+one_one$cell_type <- row_name
+one_one <- one_one %>% select(c(Freq,cell_type))
+one_one$type <- "Hypermethylation"
+
+count0s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "0"))
+one_zero <- sortedFrequency[which(count0s==1),]
+row_name <- sapply(as.character(one_zero$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == "0")])
+one_zero$cell_type <- row_name
+one_zero <- one_zero %>% select(c(Freq,cell_type))
+one_zero$type <- "Hypomethylation"
+
+data_visualize <- rbind(one_one,one_zero)
+
+data_visualize <- data_visualize %>%
+  group_by(cell_type) %>%
+  summarise(Total_CpGs = sum(Freq))
+
+# Reorder the CellType factor based on total CpGs, from highest to lowest
+data_visualize$cell_type <- factor(data_visualize$cell_type,levels=data_visualize$cell_type[order(data_visualize$Total_CpGs[1:41],decreasing = TRUE)])
+
+ggplot(data_visualize, aes(x = cell_type, y = Freq, fill = type)) +
+  geom_bar(stat = "identity", position = "stack") +  
+  scale_fill_manual(values = c("Hypermethylation" = "#fccccb",  
+                               "Hypomethylation" = "#7ac7e2")) +
+  labs(title = "",x = "", y = "#CpGs",fill="") +
+  theme_bw() + theme(axis.title.x=element_blank(),
+       axis.ticks.x=element_blank(),
+       legend.position = "top", 
+       panel.grid.major = element_blank(), 
+       panel.grid.minor = element_blank(),
+       axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))
+ggsave("~/figures/fuh1/SparseInfer/202401007_LiuMajor_pattern.pdf",width=6,height=4)
+```
+
+### Visualize cumulative CpG along the patterns
+
+```{r}
+reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
+stringFrequency <- table(reference_set)
+frequencyDF <- as.data.frame(stringFrequency)
+sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
+sortedFrequency$pattern <- paste0("P",seq(1:nrow(sortedFrequency)))
+
+sortedFrequency$Cumulative_Freq = cumsum(sortedFrequency$Freq)
+sortedFrequency_df <- sortedFrequency[1:1000,]
+
+count1s <- sapply(as.character(sortedFrequency_df$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "1"))
+count0s <- sapply(as.character(sortedFrequency_df$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "0"))
+
+sortedFrequency_df$unique <- "Not unique"
+sortedFrequency_df$unique[which(count1s==1)] <- "Unique hypermethylated"
+sortedFrequency_df$unique[which(count0s==1)] <- "Unique hypomethylated"
+
+sortedFrequency_df$size <- ifelse(sortedFrequency_df$unique == "Not unique",0,1)
+  
+ggplot(sortedFrequency_df, aes(x = 1:1000, y = Cumulative_Freq, group = 1)) +
+  geom_line(color = "#fccccb", linewidth = 2) +
+  geom_point(color = unique,size=unique) +
+  scale_y_log10() +
+  labs(title = "", x = "Pattern #", y = "Cumulative CpG #") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        text = element_text(size = 12))
+
+ggplot(sortedFrequency_df, aes(x = 1:1000, y = Cumulative_Freq, group = 1, 
+               color = unique, size = size)) + 
+  geom_line(color = "#fccccb", linewidth = 2) +  # Line for cumulative trend
+  geom_point() +                         # Points with color and size mapping
+  scale_y_log10() +                       # Log10 scale for y-axis
+  scale_color_manual(values = c("#A6DAEF", "#FDD379", "#B0D9A5")) +  # Set distinct colors
+  scale_size_continuous(range = c(1, 2)) + # Adjust point size scale
+  labs(title = "", 
+       x = "Pattern", 
+       y = "Cumulative CpG #", 
+       color = "Status", 
+       size = "") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        text = element_text(size = 11)) + guides(size = "none")
+
+ggsave("~/figures/fuh1/20240206_cumulative_CGs_Liu.pdf",width=5,height=4)
+
+```
+

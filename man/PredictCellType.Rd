@@ -4,14 +4,14 @@
 \alias{PredictCellType}
 \title{Predict cell type annotation from the trained model}
 \usage{
-PredictCellType(bst_model, predictMatrix, smooth = TRUE, KNeighbor = 5)
+PredictCellType(bst_model, predictMatrix, smooth = FALSE, KNeighbor = 5)
 }
 \arguments{
 \item{bst_model}{The boosting model trained from ModelTrain}
 
 \item{predictMatrix}{A wide cell by pattern matrix generated from GenerateInput function}
 
-\item{smooth}{A Boolean variable to indicate whether smooth the matrix (Default: TRUE)}
+\item{smooth}{A Boolean variable to indicate whether smooth the matrix (Default: FALSE)}
 
 \item{KNeighbor}{number of knn neighbors to use for smoothing (Default: 5)}
 }
