@@ -1,0 +1,6 @@
+Splitting and subset creation complete!
+Loading required package: usethis
+Loading required package: foreach
+Loading required package: iterators
+Loading required package: parallel
+Processing completedExecution time: 2714 seconds

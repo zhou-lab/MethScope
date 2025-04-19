@@ -38,7 +38,8 @@ PlotUMAP <- function(predictMatrix,prediction_result,n_component=30,seed=123,...
   plot1 <- ggplot(df_plot) + geom_point(aes(UMAP1,UMAP2,fill=color),pch = 21,size = 1, stroke=NA) +
     theme_bw()+labs(fill="")+theme(panel.grid.major = element_blank(),
                                    panel.grid.minor = element_blank(),
-                                   panel.background = element_blank())
+                                   panel.background = element_blank())+
+    guides(fill = guide_legend(override.aes = list(size = 4)))
   plot2 <- ggplot(df_plot) + geom_point(aes(UMAP1,UMAP2,fill=conf),pch = 21,size = 1, stroke=NA) +
     theme_bw()+labs(fill="")+theme(panel.grid.major = element_blank(),
                                    panel.grid.minor = element_blank(),
@@ -110,11 +111,12 @@ PlotUMAP_fixedwindow <- function(query_fn, knowledge_fn,prediction_result,n_comp
 #'
 #' @param prediction_result Prediction result from PredictCellType
 #' @param actual_label Ground truth cell label
+#' @param log2 Log scale count (Default: False)
 #' @return A ggplot2 confusion table object.
 #' @import ggplot2
 #' @importFrom caret confusionMatrix
 #' @export
-PlotConfusion <- function(prediction_result,actual_label) {
+PlotConfusion <- function(prediction_result,actual_label,log2=F) {
   confusion_matrix <- caret::confusionMatrix(factor(prediction_result$prediction_label),
                                       factor(actual_label),mode = "everything")
   cm_table <- as.data.frame(confusion_matrix$table)
@@ -124,13 +126,16 @@ PlotConfusion <- function(prediction_result,actual_label) {
   
   # Rename columns for ggplot
   colnames(cm_table) <- c("Actual", "Predicted", "Freq")
+  legend_title <- "Count"
+  if(log2){cm_table$Freq <- log2(cm_table$Freq+1)
+  legend_title <- "Log2(Count)"}
   
   # Plot using ggplot2
   p1 <- ggplot(cm_table, aes(x = Predicted, y = Actual, fill = Freq)) +
     geom_tile(color = "white") +
     scale_fill_distiller(direction=1)+
     labs(title = paste0("Confusion Matrix (Accuracy: ", round(accuracy_rate, 3), ")"),
-         x = "Predicted Label", y = "Actual Label", fill = "") +
+         x = "Predicted Label", y = "Actual Label", fill = legend_title) +
     theme_minimal() +
     theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
           axis.text.x = element_text(size = 8, angle = 90, vjust = 0.5, hjust = 1),  # Rotated and smaller
@@ -138,16 +143,51 @@ PlotConfusion <- function(prediction_result,actual_label) {
   p1
 }
 
+#' Generate F1 score barplot for each class
+#'
+#' @param prediction_result Prediction result from PredictCellType
+#' @param actual_label Ground truth cell label
+#' @return A ggplot2 object.
+#' @import ggplot2
+#' @importFrom caret confusionMatrix
+#' @importFrom stringr str_remove
+#' @export
+PlotF1 <- function(prediction_result,actual_label) {
+  confusion_matrix <- caret::confusionMatrix(factor(prediction_result$prediction_label),
+                                             factor(actual_label),mode = "everything")
+  f1_scores <- confusion_matrix$byClass[, "F1"]
+  f1_df <- data.frame(Class = rownames(confusion_matrix$byClass),
+                      F1_Score = f1_scores)
+  f1_df$F1_Score[is.na(f1_df$F1_Score)] <- 0
+  f1_df$Class <- stringr::str_remove(f1_df$Class, "^Class: ")
+  ggplot(f1_df, aes(x = reorder(Class, F1_Score), y = F1_Score, fill = F1_Score)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +  # Flip to horizontal for better readability
+    scale_fill_distiller(palette = "YlOrBr",direction=1) +  # Better contrast
+    labs(title = "",
+         x = "",
+         y = "F1-score",
+         fill = "") +
+    theme_bw() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+          axis.text.y = element_text(size = 10),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          legend.position = "None") 
+}
+
 #' Impute missing value for 100K window matrix
 #'
 #' @param mtx A cell by 100K window data frame with missing values
+#' @param na_percent A na percent threshold to be filterd (Default: 30)
 #' @return A cell by 100K window data frame with imputed values
 #' @importFrom stats quantile
 #' @export
 #'
-imputeRowMean <- function(mtx) {
+imputeRowMean <- function(mtx,na_percent = 30) {
   na_percentage <- sapply(mtx, function(x) sum(is.na(x)) / length(x)) * 100
-  mtx <- mtx[, na_percentage < 30]
+  mtx <- mtx[, na_percentage < na_percent]
   k <- which(is.na(mtx), arr.ind=TRUE)
   mtx[k] <- rowMeans(mtx, na.rm=TRUE)[k[,1]]
   mtx

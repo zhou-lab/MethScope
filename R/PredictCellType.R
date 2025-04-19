@@ -26,7 +26,7 @@ PredictCellType <- function(bst_model, predictMatrix,smooth=FALSE,KNeighbor=5) {
     predictMatrix_smooth <- Matrix_smooth[[1]]
     rownames(predictMatrix_smooth) <- rownames(predictMatrix)
     colnames(predictMatrix_smooth) <- colnames(predictMatrix)
-    na_loc <- is.na(predictMatrix[,1:1000])
+    na_loc <- is.na(predictMatrix[,1:number_patterns])
     predictMatrix_smooth[na_loc] <- NA
     predictMatrix <- as.matrix(predictMatrix_smooth)
   }
@@ -111,7 +111,7 @@ smooth_matrix <- function(predictMatrix,KNeighbor = 5){
 #' 
 filter_cell <- function(pred_result,knn_res,KNeighbor = 5){
   cell_type_counts <- table(pred_result$prediction_label)
-  low_confidence_idx <- which(cell_type_counts[pred_result$prediction_label] < KNeighbor & pred_result$confidence_score < 0.2)
+  low_confidence_idx <- which(cell_type_counts[pred_result$prediction_label] < KNeighbor & pred_result$confidence_score < 0.5)
   majority_vote <- function(neighbors) {
     labels <- pred_result$prediction_label[neighbors]  # Get labels of nearest neighbors
     labels <- labels[!is.na(labels)]  # Remove NAs (if any)

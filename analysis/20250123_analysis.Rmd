@@ -1,0 +1,299 @@
+---
+title: "20240123_analysis"
+output: html_document
+date: "2025-01-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Zhou human single cell ref
+mergeCG2 /home/fuh1/tmp/2025_ecker/results /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg
+
+### Fabyanic mouse brain Joint-snhmC-seq
+
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg",reference_pattern)
+
+Fabyanic_2024_Pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
+VariableFeatures(Fabyanic_2024_Pattern.obj) <- rownames(Fabyanic_2024_Pattern.obj[['DNAm']])
+DefaultAssay(Fabyanic_2024_Pattern.obj) <- "DNAm"
+Fabyanic_2024_Pattern.obj <- NormalizeData(Fabyanic_2024_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Fabyanic_2024_Pattern.obj <- ScaleData(Fabyanic_2024_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Fabyanic_2024_Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(Fabyanic_2024_Pattern.obj@assays$DNAm@layers$counts)
+
+Fabyanic_2024_Pattern.obj <- RunPCA(Fabyanic_2024_Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Fabyanic_2024_Pattern.obj <- FindNeighbors(Fabyanic_2024_Pattern.obj, reduction = "mpca", dims = 1:30)
+Fabyanic_2024_Pattern.obj <- FindClusters(Fabyanic_2024_Pattern.obj, verbose = FALSE, resolution = 0.7)
+Fabyanic_2024_Pattern.obj <- RunUMAP(Fabyanic_2024_Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30,metric="euclidean",min.dist = 0.3,spread=0.7)
+
+prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = T)
+Fabyanic_2024_Pattern.obj$MethScope <- prediction_result$prediction_label
+
+library(readxl)
+orig_anno <- read_xlsx("~/cell_type/20230829_Fabyanic2023.xlsx")
+orig_anno <- orig_anno[match(rownames(prediction_result),orig_anno$GSM),]
+orig_anno_result <- orig_anno$celltype
+orig_anno_result[is.na(orig_anno_result)] <- orig_anno$sorting[is.na(orig_anno_result)]
+
+Fabyanic_2024_Pattern.obj$orig_annotation <- orig_anno_result
+n_clusters <- length(unique(Fabyanic_2024_Pattern.obj$orig_annotation))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+cell_order <- names(Fabyanic_2024_Pattern.obj$orig_annotation)[order(factor(Fabyanic_2024_Pattern.obj$orig_annotation))]
+
+cortex_cells <- orig_anno$GSM[which(orig_anno$tissue=="Cortex" & orig_anno$assay=="snmCseq2")]
+
+subset_obj <- subset(Fabyanic_2024_Pattern.obj, cells = cortex_cells)
+
+subset_obj$orig_annotation <- recode(
+  subset_obj$orig_annotation,
+  "Ex" = "Ex neuron (NeuN⁺/Neurod6⁺)",
+  "Inh" = "Inh neuron (NeuN⁺/Neurod6⁻)",
+  "NeuN_pos" = "Pan-neuronal (NeuN⁺)",
+  "NeuN_neg" = "Nonneuronal (NeuN⁻)"
+)
+
+n_clusters <- length(unique(Fabyanic_2024_Pattern.obj$orig_annotation))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+
+ordered_clusters <- c(
+ "Nonneuronal (NeuN⁻)","Pan-neuronal (NeuN⁺)",
+ "Inh neuron (NeuN⁺/Neurod6⁻)","Ex neuron (NeuN⁺/Neurod6⁺)"
+)
+cell_order <- names(subset_obj$orig_annotation)[order(factor(subset_obj$orig_annotation, levels = ordered_clusters))]
+
+p1 <- DimPlot(subset_obj, reduction = 'meth.umap', repel = TRUE,group.by = 'orig_annotation', pt.size = 0.7,cols=cols,cells=cell_order)  + NoGrid() + ggtitle("")
+p1
+ggsave("~/figures/fuh1/20250414_Haowu_umap_orig.pdf",width=6.5,height=5)
+
+n_clusters <- length(unique(subset_obj$MethScope))
+cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+
+p2 <- DimPlot(subset_obj, reduction = 'meth.umap', repel = TRUE,group.by = 'MethScope', pt.size = 0.7,cols=cols)  + NoGrid()
+p2
+ggsave("~/figures/fuh1/20250414_Haowu_umap_methscope.pdf",width=5.5,height=5)
+```
+
+
+### Liu2021 mouse brain
+
+```{r}
+library(readxl)
+celltype <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
+train <- read.table("~/cell_type/20240322_Liu2021_training_sample.txt",sep="\t")
+left_over_cells <- celltype %>% filter(!SampleID %in% train$V1)
+output_sample <- left_over_cells$SampleID
+write.table(output_sample,"~/cell_type/20250130_Liu2021.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+```
+
+yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250130_Liu2021.txt -o ~/intermediate/20250130_Liu2021.cg
+sbatch 20250205_run_model.sh
+
+```{r}
+### load prediction result
+
+# Define directory where .rds files are stored
+prediction_dir <- "/home/fuh1/intermediate/20250130_Liu2021/"
+# List all subset prediction RDS files
+rds_files <- list.files(prediction_dir, pattern = "subset_.*_prediction.rds$", full.names = TRUE)
+# Load all .rds files and merge them into a single dataframe
+prediction_result <- do.call(rbind, lapply(rds_files, function(file) {
+  df <- readRDS(file)  # Load .rds file
+  return(df)
+}))
+
+idx <- match(rownames(prediction_result), celltype$SampleID)
+subset_cells_label <- celltype[idx,]
+subset_cells_label <- subset_cells_label$MajorType
+PlotConfusion(prediction_result,subset_cells_label,log2=F)
+ggsave("~/figures/fuh1/20250130_Liu2021_confusion.pdf",width=6,height=5.5)
+
+PlotF1(prediction_result,subset_cells_label)
+ggsave("~/figures/fuh1/20250130_Liu2021_f1.pdf",width=4,height=6) 
+              
+# Define directory where .rds files are stored
+prediction_dir <- "/home/fuh1/intermediate/20250130_Liu2021/"
+# List all subset prediction RDS files
+rds_files <- list.files(prediction_dir, pattern = "subset_.*_patterns.rds$", full.names = TRUE)
+# Load all .rds files and merge them into a single dataframe
+input_pattern <- do.call(rbind, lapply(rds_files, function(file) {
+  df <- readRDS(file)  # Load .rds file
+  return(df)
+}))
+
+umap_plot <- PlotUMAP(input_pattern,prediction_result)
+umap_plot[[1]]
+ggsave("~/figures/fuh1/20250130_Liu2021_umap.pdf",width=6.5,height=4)
+
+
+### confidence score plot
+prediction_result$actual_label <- subset_cells_label
+df <- prediction_result %>%
+  mutate(prediction_status = ifelse(prediction_label == actual_label, "Correct", "Incorrect"))
+
+# Create violin plot
+ggplot(df, aes(x = prediction_status, y = confidence_score, fill = prediction_status)) +
+  geom_boxplot(outlier.shape = NA) +  # Optional: adds boxplot for better visualization
+  scale_fill_manual(values = c("Correct" = "#7ac7e2", "Incorrect" = "#e37163")) + 
+  labs(title = "", x = "Prediction Status", y = "Confidence Score") +
+  theme_bw() + theme(legend.position = "None") + ylim(0,1)+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+ggsave("~/figures/fuh1/20250130_Liu2021_CI.pdf",width=3,height=3)
+
+sparsity <- read.table("~/intermediate/20250130_Liu2021_summary.txt",header = T)
+idx <- match(rownames(prediction_result),sparsity$Query)
+sparsity <- sparsity[idx,]
+prediction_result$actual_label <- subset_cells_label
+df <- prediction_result %>%
+  mutate(prediction_status = ifelse(prediction_label == actual_label, "Correct", "Incorrect"))
+df$cg <- log10(sparsity$N_query)
+
+ggplot(df, aes(x = prediction_status, y = cg, fill = prediction_status)) +
+  geom_boxplot(outlier.shape = NA) +  # Optional: adds boxplot for better visualization
+  scale_fill_manual(values = c("Correct" = "#7ac7e2", "Incorrect" = "#e37163")) + 
+  labs(title = "", x = "Prediction Status", y = "log10 (# CpGs)") +
+  theme_bw() + theme(legend.position = "None") + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+ggsave("~/figures/fuh1/20250130_Liu2021_Sparse.pdf",width=3,height=3)
+```
+
+### Spatial mouse brain P21
+
+```{r}
+library(readxl)
+celltype <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
+celltype <- celltype %>% filter(celltype$MajorRegion %in% c("HPF","Isocortex"))
+remove_cells <- names(which(table(celltype$MajorType) < 70))
+celltype <- celltype %>% filter(!celltype$MajorType %in% remove_cells)
+#output_sample <- celltype$SampleID
+#write.table(output_sample,"~/cell_type/20250212_Liu2021hpf.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+#write.table(celltype, "~/cell_type/20220630_Liu2021_mouseBrainWGBS.tsv", sep = "\t", row.names = FALSE,col.names = TRUE)
+
+sampled_celltype <- celltype %>%
+  group_by(MajorType) %>%
+  sample_n(70)
+output_sample <- sampled_celltype$SampleID
+write.table(output_sample,"~/cell_type/20250112_Liu2021_training_sample.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+```
+
+yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250112_Liu2021_training_sample.txt -o ~/intermediate/20250212_Liu2021_training.cg
+
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/intermediate/20250212_Liu2021_training.cg",reference_pattern)
+celltype <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
+sampled_celltype <- celltype$MajorType[match(rownames(input_pattern), celltype$SampleID)]
+trained_model <- Input_training(input_pattern,sampled_celltype,cross_validation=T)
+saveRDS(trained_model,"/home/fuh1/intermediate/20250212_Liu2021_training_model.rds")
+```
+
+```{r}
+barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240331_B14D_barcodesK.rds")
+#write.table(barcodes,"~/cell_type/20250130_P21.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+trained_model <- readRDS("/home/fuh1/intermediate/20250212_Liu2021_training_model.rds")
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLB14DM/SpMETSLB14DM_filter.cg",reference_pattern)
+prediction_result <- PredictCellType(trained_model,input_pattern,smooth = F)
+umap_plot <- PlotUMAP(input_pattern,prediction_result)
+umap_plot[[1]]
+
+group <- as.factor(prediction_result$prediction_label)
+group <- prediction_result$confidence_score
+spatial_coordinate <- read.table("~/SpM/spatial_barcodes.txt",sep="\t")
+idx <- match(rownames(prediction_result),spatial_coordinate$V4)
+spatial_coordinate_filter <- spatial_coordinate[idx,]
+spatial_heatmap <- cbind(spatial_coordinate_filter$V2,spatial_coordinate_filter$V3,group)
+spatial_heatmap <- as.data.frame(spatial_heatmap)
+spatial_heatmap$V1 <- as.factor(spatial_heatmap$V1)
+spatial_heatmap$V2 <- as.factor(spatial_heatmap$V2)
+#spatial_heatmap$group <- factor(spatial_heatmap$group, levels = 1:30, labels = levels(group))
+
+ggplot(spatial_heatmap, aes(V2, V1))+
+  geom_point(aes(color=group),size = 2) +
+  theme_bw() + xlab("") + ylab("")+scale_x_discrete(limits = rev(levels(spatial_heatmap$V2)))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.border = element_blank())+
+  guides(color=guide_legend(title="Cluster"))+
+  coord_fixed(ratio=1)+ scale_y_discrete(limits=rev)+#+scale_color_discrete(na.value="white")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+### Spatial face E11
+
+```{r}
+barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240109_E24D_barcodesK.rds")
+#write.table(barcodes,"~/cell_type/20250130_P21.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLE23D/SpMETSLE23D_filter.cg",reference_pattern)
+
+summary_results <- utils::read.table("/mnt/isilon/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLE24D/SpMETSLE24D_cluster", header = TRUE) 
+input_pattern <- summary_results
+prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = T)
+
+umap_plot <- PlotUMAP(input_pattern,prediction_result)
+umap_plot[[1]]
+
+group <- as.factor(prediction_result$prediction_label)
+spatial_coordinate <- read.table("~/SpM/spatial_barcodes.txt",sep="\t")
+idx <- match(rownames(prediction_result),spatial_coordinate$V4)
+spatial_coordinate_filter <- spatial_coordinate[idx,]
+spatial_heatmap <- cbind(spatial_coordinate_filter$V2,spatial_coordinate_filter$V3,group)
+spatial_heatmap <- as.data.frame(spatial_heatmap)
+spatial_heatmap$V1 <- as.factor(spatial_heatmap$V1)
+spatial_heatmap$V2 <- as.factor(spatial_heatmap$V2)
+spatial_heatmap$group <- factor(spatial_heatmap$group, levels = 1:41, labels = levels(group))
+
+ggplot(spatial_heatmap, aes(V2, V1))+
+  geom_point(aes(color=group),size = 2) +
+  theme_bw() + xlab("") + ylab("")+scale_x_discrete(limits = rev(levels(spatial_heatmap$V2)))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.border = element_blank())+
+  guides(color=guide_legend(title="Cluster"))+
+  coord_fixed(ratio=1)+ scale_y_discrete(limits=rev)+#+scale_color_discrete(na.value="white")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+### Single cell human atlas
+
+```{r}
+meta <- read.csv("~/tmp/2025_ecker/5kCG100k3C_summary.csv")
+major_annotation <- read.table("~/tmp/2025_ecker/L1color.tsv",sep = '\t', header = TRUE)
+colnames(major_annotation) <- c("subtype","label","anno","color")
+minor_annotation <- read.table("~/tmp/2025_ecker/subtype_meta.tsv",sep = '\t', header = TRUE)
+minor_annotation$celltype_L2_both_abbr <- gsub(" \\d+$", "", minor_annotation$celltype_L2_both_abbr)
+colnames(minor_annotation) <- c("subtype","label","anno")
+meta_updated <- meta %>%
+  left_join(minor_annotation, by = "subtype") %>%
+  select(-subtype) %>%
+  rename(subtype = label)
+
+
+cg_idx <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg.idx")
+cg_idx <- cg_idx[which(cg_idx$V1 %in% meta_updated$cell),]
+meta_updated <- meta_updated[match(cg_idx$V1,meta_updated$cell),]
+to_merge <- which(table(meta_updated$subtype) < 70)
+meta_updated$subtype[meta_updated$subtype == "DC HT"] <- "DC"
+meta_updated <- meta_updated[meta_updated$subtype != "ET L5",]
+meta_updated$subtype[meta_updated$subtype == "Fibro EndN Brn"] <- "Fibro EndN"
+meta_updated$subtype[meta_updated$subtype == "Fibro EndN Chndr"] <- "Fibro EndN"
+meta_updated$subtype[meta_updated$subtype == "Fibro GI WNT2B Co"] <- "Fibro GI Crypt Co"
+meta_updated$subtype[meta_updated$subtype == "Fibro GI Pb Lng"] <- "Fibro GI Alv"
+meta_updated$subtype[meta_updated$subtype == "Fibro HT Adipo"] <- "Fibro HT"
+meta_updated$subtype[meta_updated$subtype == "Fibro HT Ven"] <- "Fibro HT"
+meta_updated$subtype[meta_updated$subtype == "Fibro HT Atr"] <- "Fibro HT"
+meta_updated$subtype[meta_updated$subtype == "Schw Chrmf Adr"] <- "Schw Mix"
+meta_updated$subtype[meta_updated$subtype == "Schw Skn"] <- "Schw Mix"
+meta_updated <- meta_updated[meta_updated$subtype != "Sebo",]
+meta_updated$subtype[meta_updated$subtype == "Tmem CD8 Co"] <- "Tmem CD8 Mix"
+
+write.table(meta_updated,"~/cell_type/20250418_eckerhuman.tsv",sep="\t",quote = F,col.names = T)
+```
+
+cut -f 31 /home/fuh1/cell_type/20250418_eckerhuman.tsv | sort -u
+
+awk -F'\t' -v val="B Plasma" -v col=31 '$col == val' /home/fuh1/cell_type/20250418_eckerhuman.tsv | cut -f 2 | yame subset -l - /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg | yame rowop -o musum - ./test_folder/test.cg 

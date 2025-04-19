@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Pattern frequency and enrichment
 
 ```{r}
+#2025_ZhouPseudo_binstring
 reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
 #Calculate the frequency of each string
 stringFrequency <- table(reference_set)
@@ -18,10 +19,10 @@ frequencyDF <- as.data.frame(stringFrequency)
 #Sort the data frame by frequency
 sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
 sortedFrequency$pattern <- paste0("P",seq(1:nrow(sortedFrequency)))
-count1s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "1"))
+count1s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "0"))
 one_one <- sortedFrequency[which(count1s==1),]
 idx_file <- read.table("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg.idx",sep="\t")
-row_name <- sapply(as.character(one_one$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == "1")])
+row_name <- sapply(as.character(one_one$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == "0")])
 one_one$cell_type <- row_name
   
 data_visualize <- one_one
@@ -34,56 +35,10 @@ ggplot(data_visualize, aes(x=cell_type, y=Freq)) +
         axis.ticks.x=element_blank(),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+ggtitle("Liu 2021 Major Cell Type Hypomethylation Patterns")
-#ggsave("~/figures/fuh1/20240322_Liu2021_major_hypo.pdf",width=6,height=4)
+        axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+ggtitle("Liu 2021 Major Cell Type Hypomethylation Patterns")+labs(y="#CGs")
+ggsave("~/figures/fuh1/20250212_Liu2021_major_hypo.pdf",width=6,height=4)
 
 
-```
-
-### Visualize unique hypo/hyper per cell type pattern frequency
-```{r}
-reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
-stringFrequency <- table(reference_set)
-frequencyDF <- as.data.frame(stringFrequency)
-sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
-sortedFrequency$pattern <- paste0("P",seq(1:nrow(sortedFrequency)))
-
-count1s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "1"))
-one_one <- sortedFrequency[which(count1s==1),]
-idx_file <- read.table("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg.idx",sep="\t")
-row_name <- sapply(as.character(one_one$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == "1")])
-one_one$cell_type <- row_name
-one_one <- one_one %>% select(c(Freq,cell_type))
-one_one$type <- "Hypermethylation"
-
-count0s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "0"))
-one_zero <- sortedFrequency[which(count0s==1),]
-row_name <- sapply(as.character(one_zero$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == "0")])
-one_zero$cell_type <- row_name
-one_zero <- one_zero %>% select(c(Freq,cell_type))
-one_zero$type <- "Hypomethylation"
-
-data_visualize <- rbind(one_one,one_zero)
-
-data_visualize <- data_visualize %>%
-  group_by(cell_type) %>%
-  summarise(Total_CpGs = sum(Freq))
-
-# Reorder the CellType factor based on total CpGs, from highest to lowest
-data_visualize$cell_type <- factor(data_visualize$cell_type,levels=data_visualize$cell_type[order(data_visualize$Total_CpGs[1:41],decreasing = TRUE)])
-
-ggplot(data_visualize, aes(x = cell_type, y = Freq, fill = type)) +
-  geom_bar(stat = "identity", position = "stack") +  
-  scale_fill_manual(values = c("Hypermethylation" = "#fccccb",  
-                               "Hypomethylation" = "#7ac7e2")) +
-  labs(title = "",x = "", y = "#CpGs",fill="") +
-  theme_bw() + theme(axis.title.x=element_blank(),
-       axis.ticks.x=element_blank(),
-       legend.position = "top", 
-       panel.grid.major = element_blank(), 
-       panel.grid.minor = element_blank(),
-       axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))
-ggsave("~/figures/fuh1/SparseInfer/202401007_LiuMajor_pattern.pdf",width=6,height=4)
 ```
 
 ### Visualize cumulative CpG along the patterns
@@ -106,23 +61,29 @@ sortedFrequency_df$unique[which(count1s==1)] <- "Unique hypermethylated"
 sortedFrequency_df$unique[which(count0s==1)] <- "Unique hypomethylated"
 
 sortedFrequency_df$size <- ifelse(sortedFrequency_df$unique == "Not unique",0,1)
-  
-ggplot(sortedFrequency_df, aes(x = 1:1000, y = Cumulative_Freq, group = 1)) +
-  geom_line(color = "#fccccb", linewidth = 2) +
-  geom_point(color = unique,size=unique) +
-  scale_y_log10() +
-  labs(title = "", x = "Pattern #", y = "Cumulative CpG #") +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        text = element_text(size = 12))
+sortedFrequency_df$pattern_number <- 1:1000
 
-ggplot(sortedFrequency_df, aes(x = 1:1000, y = Cumulative_Freq, group = 1, 
-               color = unique, size = size)) + 
-  geom_line(color = "#fccccb", linewidth = 2) +  # Line for cumulative trend
-  geom_point() +                         # Points with color and size mapping
+# cumulative_list <- list()
+# unique_classes <- unique(sortedFrequency_df$unique)
+# for (class in unique_classes) {
+#     # Filter rows for the current class
+#     temp_df <- sortedFrequency_df %>%
+#         filter(unique == class) %>%
+#         arrange(pattern_number) %>%  # Sort by pattern
+#         mutate(Cumulative_Freq = cumsum(Freq))  # Compute cumulative frequency
+#     # Store the result in the list
+#     cumulative_list[[class]] <- temp_df
+# }
+# sortedFrequency_df_unique <- do.call(rbind, cumulative_list)
+
+
+ggplot(sortedFrequency_df, aes(x = pattern_number, y = Cumulative_Freq, group = 1, 
+               color = unique,size=size)) + 
+  geom_line(color = "#F1AEA7", linewidth = 1) +  # Line for cumulative trend
+  geom_point(alpha = 1) + # Points with color and size mapping
   scale_y_log10() +                       # Log10 scale for y-axis
   scale_color_manual(values = c("#A6DAEF", "#FDD379", "#B0D9A5")) +  # Set distinct colors
-  scale_size_continuous(range = c(1, 2)) + # Adjust point size scale
+  scale_size_continuous(range = c(1.5, 2)) + # Adjust point size scale
   labs(title = "", 
        x = "Pattern", 
        y = "Cumulative CpG #", 
@@ -132,7 +93,368 @@ ggplot(sortedFrequency_df, aes(x = 1:1000, y = Cumulative_Freq, group = 1,
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         text = element_text(size = 11)) + guides(size = "none")
 
+
 ggsave("~/figures/fuh1/20240206_cumulative_CGs_Liu.pdf",width=5,height=4)
 
 ```
+
+### Feature importance
+```{r}
+Liu2021_MouseBrain_model <- Liu2021_MouseBrain_P1000
+importance_matrix <- xgb.importance(model = Liu2021_MouseBrain_model)
+num_classes <- Liu2021_MouseBrain_model$params$num_class
+num_trees <- Liu2021_MouseBrain_model$niter
+
+# Compute how many trees per class
+trees_per_class <- num_trees / num_classes
+# Extract feature importance for each class
+feature_importance_by_class <- list()
+for (class_index in 1:num_classes) {
+  # Identify trees belonging to the class
+  class_trees <- seq(class_index, num_trees, by = num_classes)-1
+  # Extract importance for these trees
+  feature_importance_by_class[[paste0("Class_", class_index)]] <- xgb.importance(model = Liu2021_MouseBrain_model, trees = class_trees)
+}
+
+# Convert to data frame for plotting
+class_13_importance <- feature_importance_by_class[["Class_13"]]
+
+# singe class importance Plot
+ggplot(class_13_importance, aes(x = reorder(Feature, Gain), y = Gain)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Feature Importance for DG", x = "Feature", y = "Gain")
+
+top_features <- data.frame(Class = character(), Feature = character(), Gain = numeric(), stringsAsFactors = FALSE)
+for (class_name in names(feature_importance_by_class)) {
+  class_importance <- feature_importance_by_class[[class_name]]
+  top_feature <- class_importance[which.max(class_importance$Gain), ]
+  top_features <- rbind(top_features, data.frame(Class = class_name, Feature = top_feature$Feature, Gain = top_feature$Gain))
+}
+top_features$Class <- Liu2021_MouseBrain_model$cell_type
+top_features$Class <- factor(top_features$Class, levels = top_features$Class)
+
+### run the above for classifying which feature is unique 
+
+top_features$Unique <- sortedFrequency_df$unique[match(top_features$Feature,sortedFrequency_df$pattern)]
+
+ggplot(top_features, aes(x = Class, y = Gain, fill = Unique)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Feature),angle = 90,vjust = 0.5,hjust=1, size = 3, color = "white") +  # Annotate feature names
+  labs(title = "",
+       x = "",
+       y = "Gain (Feature Importance)",
+       fill = "") +
+  theme_bw() +
+  theme(legend.position = "top",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(angle = 70, vjust = 1, hjust = 1)) + scale_fill_brewer(palette = "Set2")
+ggsave("~/figures/fuh1/20250212_Liu_featureimportance.pdf",width=6,height=4)
+```
+
+### KYCG enrichment of each pattern
+
+```{r}
+pattern <- which(sortedFrequency$Freq == 50057)
+sortedFrequency[which(sortedFrequency$Freq <= 50),]$pattern <- "Pna"
+patterns_out <- sortedFrequency$pattern[match(reference_set, sortedFrequency$reference_set)]
+patterns_out_enrich <- ifelse(patterns_out == "P23",1,0)
+write.table(patterns_out_enrich,"~/zhoulab/labprojects/20231112_Hongxiang/20250130_LiuCA3.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+```
+
+yame pack ~/zhoulab/labprojects/20231112_Hongxiang/20250130_LiuCA3.txt -fb ~/zhoulab/labprojects/20231112_Hongxiang/20250130_LiuCA3.cg
+
+while IFS= read -r cm_file; do yame summary -m "$cm_file" /home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250130_LiuCA3.cg >> /home/fuh1/intermediate/kycg/20250130_LiuCA3_hypo; done < ~/intermediate/kycg/20241219_KYCG_mm10.txt
+
+```{r}
+enrichment <- read.table("/home/fuh1/intermediate/kycg/20250130_LiuCA3_hypo",header=T)
+enrichment <- enrichment %>% filter(QFile != "QFile")
+enrichment <- enrichment %>% filter(is.na(Mask) == F)
+enrichment$Log2OddsRatio <- as.numeric(enrichment$Log2OddsRatio)
+enrichment$N_overlap <- as.numeric(enrichment$N_overlap)
+enrichment <- enrichment %>% filter(Log2OddsRatio != Inf)
+enrichment <- enrichment %>% filter(Log2OddsRatio != -Inf)
+enrichment <- enrichment %>% filter(N_overlap >= 20)
+enrichment <- enrichment[order(enrichment$Log2OddsRatio,decreasing = T),]
+p_value_data <- as.data.frame(enrichment)[,c(7,6,8,5)]
+p_values <- apply(p_value_data,1,function(x){testEnrichmentFisherN(as.numeric(x[1]),as.numeric(x[2]),as.numeric(x[3]),as.numeric(x[4]))$p.value})
+
+enrichment$P.value <- p.adjust(p_values,method="fdr")
+
+plot_results <- enrichment[,c("MFile","Mask","Log2OddsRatio","P.value")]
+
+plot_results$dot_size <- -log10(plot_results$P.value) 
+
+top_terms <- plot_results %>%
+  group_by(MFile) %>%
+  top_n(n = 5, wt = Log2OddsRatio) %>%
+  ungroup()
+
+extract_terms <- function(x) {
+  parts <- strsplit(x, ";")[[1]]
+  if (length(parts) > 2 && tail(parts, n = 1) == "_") {
+    # If the last term is "_", take the second-to-last term
+    return(paste(parts[1], parts[length(parts) - 1], sep = ";"))
+  } else if (length(parts) > 1) {
+    # Otherwise, take the last term
+    return(paste(parts[1], tail(parts, n = 1), sep = ";"))
+  } else {
+    return(x) # Return as-is if the string doesn't have a delimiter
+  }
+}
+top_terms$Mask <- sapply(top_terms$Mask, extract_terms)
+top_terms <- top_terms %>%
+  group_by(MFile) %>%
+  arrange(desc(dot_size)) %>%
+  slice_head(n = 5) %>%
+  ungroup()
+top_terms <- top_terms[order(top_terms$Log2OddsRatio),]
+
+top_terms$Mask <- factor(top_terms$Mask,levels=unique(top_terms$Mask))
+
+top_terms$dot_size[which(top_terms$dot_size > 100)] = 100
+
+top_terms$MFile <- gsub(".*","",top_terms$MFile)
+
+ggplot(top_terms, aes(x = Log2OddsRatio, y = Mask, color = MFile, size = dot_size)) +
+  geom_point(alpha = 0.7) + # Alpha adjusts transparency
+  theme_minimal() +
+  labs(
+    x = "Log2 Odds Ratio",
+    y = "",
+    title = "",
+    color = "",
+    size = "-log10(FDR)"
+  ) +
+  scale_size_continuous(range = c(2, 10)) + # Adjust dot size range
+  theme(
+    axis.text.y = element_text(size = 10, hjust = 1),
+    axis.title = element_text(size = 12),
+    plot.title = element_text(hjust = 0.5, size = 14)
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  xlim(-3,3) + scale_color_brewer(palette = "Set2")# Add vertical line at 0 
+ggsave("~/figures/fuh1/20250130_CA3Liu_hypo.pdf",width=6,height=5)
+
+```
+
+### KYCG enrichment pattern of TFBS
+
+```{r}
+pattern_list <- top_features %>% filter(Unique == "Unique hypomethylated")
+pattern_list_enrich <- pattern_list$Feature
+
+sortedFrequency[which(sortedFrequency$Freq <= 50),]$pattern <- "Pna"
+patterns_out <- sortedFrequency$pattern[match(reference_set, sortedFrequency$reference_set)]
+patterns_out_enrich_full <- c()
+for (i in 1:length(pattern_list_enrich)){
+  patterns_out_enrich <- ifelse(patterns_out == pattern_list_enrich[i],1,0)
+  patterns_out_enrich_full <- cbind(patterns_out_enrich_full,patterns_out_enrich)
+}
+
+for (i in 1:ncol(patterns_out_enrich_full)){
+  write.table(patterns_out_enrich_full[,i],"~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- paste0("yame pack ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern.txt -fb ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern/",i,".cg")
+  system(text)
+}
+# mergeCG2 ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern/ ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern.cg
+# yame summary -m /home/fuh1/references/mm10/KYCGKB_mm10/TFBSrm.20221005.cm ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern_TFBS
+
+library(dplyr)
+library(tidyr)
+TFBS_result <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern_TFBS",header=T)
+TFBS_result$Log2OddsRatio <- as.numeric(TFBS_result$Log2OddsRatio)
+# Step 1: Identify top 5 masks globally based on average Log2OddsRatio
+top_masks <- TFBS_result %>%
+  group_by(Query) %>%
+  arrange(Query, dplyr::desc(Log2OddsRatio)) %>%   # Use explicit namespace
+  slice_head(n = 2) %>%
+  select(Query,Mask)
+
+# Step 2: Filter original data to include only those top 5 masks
+filtered_df <- TFBS_result %>%
+  filter(Mask %in% top_masks$Mask)
+
+# Step 3: Transform to wide matrix (Query × Mask)
+matrix_df <- filtered_df %>%
+  select(Query, Mask, Log2OddsRatio) %>%
+  pivot_wider(names_from = Mask, values_from = Log2OddsRatio)
+
+matrix_df <- as.data.frame(matrix_df)
+rownames(matrix_df) <- paste0(pattern_list_enrich[matrix_df$Query]," (", pattern_list$Class[matrix_df$Query], ")")
+matrix_df <- matrix_df[,-1]
+df_matrix_clean <- matrix_df
+df_matrix_clean[df_matrix_clean == -Inf] <- NA
+df_zscore <- as.data.frame(scale(df_matrix_clean, center = TRUE, scale = TRUE))
+
+
+df_zscore$Query <- rownames(df_zscore)
+df_long <- df_zscore %>%
+  pivot_longer(
+    -Query,
+    names_to = "Mask",
+    values_to = "Zscore"
+  )
+
+ggplot(df_long, aes(x = Mask, y = Query, fill = Zscore)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "viridis", na.value = "white") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
+  ) +
+  labs(
+    x = "Transcription Factor Binding Sites",
+    y = "",
+    fill = "Z-score"
+  )
+ggsave("~/figures/fuh1/20250409_TFBS_liu.pdf",width=7,height=5)
+```
+
+
+### Sparsity levels across different datasets
+```{r}
+suppressMessages(library(readr))
+df1 = read_tsv("~/zhou_lab/projects/20230531_Spatial_methseq/features/SpMETSLE14DM/ChromHMM.20220414_new") %>% dplyr::filter(!is.na(Mask)) 
+df2 = read_tsv("~/zhou_lab/projects/20230531_Spatial_methseq/features/SpMETSLB14DM/ChromHMM.20220414_new") %>% dplyr::filter(!is.na(Mask))
+df0 = read_tsv("~/zhoulab/labprojects/20210610_zhouw3/20230804_public_mm10_chromHMM_merged.tsv.gz") %>% dplyr::filter(!is.na(Mask))
+df0$File = gsub("_mm10","",df0$File)
+df1$File = "Spatial E11 Embryo (50 \u03BCm)"
+df2$File = "Spatial P21 Brain (20 \u03BCm)"
+df0 = bind_rows(df0,df1,df2)
+df0 = df0 %>% dplyr::select(File, QFile, N_query) %>% unique
+
+grDevices::cairo_pdf("~/figures/fuh1/SparseInfer/202401007_NCG_covered.pdf",width=5, height=5)
+ggplot(df0) + geom_hline(yintercept=21000000) + geom_hline(yintercept=21000000*0.1, lty="dashed") + geom_hline(yintercept=21000000*0.01, lty="dotted") + scale_y_continuous(trans="log10") + geom_violin(aes(File, N_query, fill = File),trim=TRUE) + ylab("#CpGs covered") + xlab("") + theme_bw()+ theme(
+  panel.grid.major = element_blank(), 
+  panel.grid.minor = element_blank(),
+  panel.background = element_blank()
+) + theme(axis.text.x = element_text(angle = 50, vjust = 1, hjust=1))+ theme(text = element_text(size = 11), legend.position = "None") + coord_flip() 
+dev.off()
+```
+
+### Number of patterns in 5 cross-validation
+```{r}
+suppressMessages(library(stringr))
+suppressMessages(library(doParallel))
+suppressMessages(library(foreach))
+suppressMessages(library(xgboost))
+suppressMessages(library(dplyr))
+suppressMessages(library(caret))
+Liu_rf_input <- readRDS("~/tmp/20240322_SparseM/20240322_Liu_training.RDS")
+pattern <- lapply(1:12, function(i) 1:(2^i))
+train <- Liu_rf_input[,-c(1,ncol(Liu_rf_input))]
+cell_type <- Liu_rf_input$cell_type
+column_order <- order(as.numeric(str_extract(colnames(train), "\\d+")))
+train <- train[, column_order]
+cell_type <- as.factor(cell_type)
+cell_type <- as.numeric(as.factor(cell_type)) - 1
+train = do.call(cbind, lapply(train[,1:5000], as.numeric))
+
+numberOfClasses <- length(unique(cell_type))
+xgb_params <- list("objective" = "multi:softprob",
+                   "eval_metric" = "mlogloss",
+                   "num_class" = numberOfClasses)
+nround    <- round(sqrt(nrow(train)))
+cv.nfold  <- 5
+registerDoParallel(cores=12)
+
+accuracy_rate <- foreach(i=1:12, .combine='c') %do% {
+  train_selected <- train[,unlist(pattern[i])]
+  dtrain <- xgb.DMatrix(data = train_selected, label= cell_type)
+  cv_model <- xgb.cv(params = xgb_params,
+                   data = dtrain, 
+                   nrounds = nround,
+                   nfold = cv.nfold,
+                   verbose = FALSE,
+                   prediction = TRUE)
+  OOF_prediction <- data.frame(cv_model$pred) %>%
+  mutate(max_prob = max.col(., ties.method = "last"),
+         label = cell_type + 1)
+  confusion_matrix <- confusionMatrix(factor(OOF_prediction$max_prob),
+                factor(OOF_prediction$label),
+                mode = "everything")
+  confusion_matrix <- confusion_matrix$table
+  accuracy_rate <- 1-(sum(confusion_matrix) - sum(diag(confusion_matrix))) / sum(confusion_matrix)
+  accuracy_rate
+}
+
+pdf("~/figures/fuh1/SparseInfer/20241009_xgb_numberPatterns.pdf", width=5, height=5, onefile=FALSE)
+plot(accuracy_rate*100,type = "b", pch = 18,xlab=expression(paste("2"^"x")~"number of patterns"),ylab="CV accuracy %",cex.lab=1.3, cex.axis=1.3, ylim = c(0,100))
+abline(h = 95, col="red", lwd=1, lty=2)
+dev.off()
+```
+
+### Number of patterns and sparsity levels
+
+rm -f ~/tmp/20231122_downsample/bycell/*
+doawk() { awk -v number=$1 -v seed=$2 -v gsm=$3 'NR>1 && int(substr($4,2)) <= 2000{print number, seed, gsm, $4,$10;}' $4;}
+export -f doawk
+cat ~/cell_type/20240322_Liu2021_testing_sample.txt | awk '{for(i=10;i<=19;++i) {print 2**i,$1;}}' | parallel --col-sep '\t' -j 48 ':>~/tmp/20231122_downsample/bycell/{1}_{2}.gz; for seed in {1..1}; do yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg {2} | yame dsample -s $seed -N {1} - | yame summary -m ~/cell_type/Tool/MethScope/inst/extdata/Liu2021_MouseBrain.cm - | doawk {1} $seed {2} - | gzip -c >>~/tmp/20231122_downsample/bycell/{1}_{2}.gz; done'
+find ~/tmp/20231122_downsample/bycell/ -name '*.gz' | xargs cat >~/tmp/20231122_downsample/dsample.tsv.gz
+
+yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20240322_Liu2021_training_sample.txt -o ~/intermediate/20240322_Liu2021_training.cg
+
+```{r}
+library(readr)
+library(tidyr)
+library(readxl)
+library(dplyr)
+library(scales)
+test = read_tsv("~/tmp/20231122_downsample/dsample.tsv.gz",
+    col_names=c("cg_num","seed","gsm","pattern","beta"))
+test = test |> dplyr::filter(pattern %in% paste0("P", 1:2000)) |>
+    dplyr::select(gsm, pattern, seed, cg_num, beta) |>
+    pivot_wider(values_from="beta", names_from="pattern")
+meta <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
+
+patterns_to_test <- c(125,250,500,1000,2000)
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/intermediate/20240322_Liu2021_training.cg",reference_pattern)
+sampled_celltype <- meta$MajorType[match(rownames(input_pattern), meta$SampleID)]
+trained_model <- Input_training(input_pattern,sampled_celltype,number_patterns = 2000,cross_validation = F)
+dfplot_merge <- c()
+for (i in patterns_to_test){
+  test_data = test[,paste0("P", 1:i)]
+  new_cols <- as.data.frame(matrix(NA, nrow = nrow(test_data), ncol = (2000-i)))
+  test_data <- cbind(test_data, new_cols)
+  colnames(test_data) <- paste0("P", 1:2000)
+  #trained_model <- Input_training(input_pattern,sampled_celltype,number_patterns = i,cross_validation = F)
+  prediction_result <- PredictCellType(trained_model,test_data,smooth = F)
+  test_meta = test[,1:3]
+  test_meta$prediction = prediction_result$prediction_label
+  test_meta$MajorType = meta$MajorType[match(test_meta$gsm, meta$SampleID)]
+  dfplot = test_meta |> group_by(cg_num) |> summarize(n_match = sum(prediction == MajorType), n = n())
+  dfplot$pattern_number <- i
+  dfplot_merge <- rbind(dfplot_merge,dfplot)
+}
+
+#saveRDS(dfplot, file="~/cell_type/20250218_sparsity_pattern.rds")
+
+#dfplot_merge <- readRDS("~/cell_type/20250218_sparsity_pattern.rds")
+ggplot(dfplot_merge, aes(cg_num, n_match/n,color = as.factor(pattern_number))) + geom_line(aes(group = pattern_number), linewidth = 1) + geom_point() + scale_x_continuous(trans="log2",
+    labels = trans_format("log2", math_format(2^.x))) + scale_y_continuous(labels=scales::percent,limits = c(0,1)) + xlab("#CpGs covered") + ylab("Overall Classification Accuracy") + theme_bw() + theme(text = element_text(size = 9),panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "right")+labs(color = "Pattern Number")+ scale_colour_brewer(palette = "Set2")
+ggsave("~/figures/fuh1/20250220_sparsitypatterns_sep.pdf",width=4,height=3)
+
+
+test_data = test[,paste0("P", 1:2000)]
+test_meta = test[,1:3]
+test_meta$observed <- apply(test_data, 1, function(x) ncol(test_data)-sum(is.na(x)))
+
+summary_df <- test_meta %>%
+  group_by(cg_num) %>%
+  summarize(
+    mean_observed = mean(observed),
+    sd_observed = 2*sd(observed),
+    .groups = 'drop')
+
+pdf("~/figures/fuh1/20250220_numberofpatterns.pdf",width=3,height=3,useDingbats = FALSE)
+ggplot(summary_df, aes(x = cg_num, y = mean_observed)) +  geom_line(linewidth = 0.7,color="black") + geom_point(color = "black") + scale_x_continuous(trans="log2",
+    labels = trans_format("log2", math_format(2^.x))) + geom_errorbar(aes(ymin = mean_observed - sd_observed, ymax = mean_observed + sd_observed),width = 0.1, color = "red") + xlab("#CpGs covered")+ theme_bw() + theme(text = element_text(size = 11),panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + ylab("#Patterns observed")
+dev.off()
+```
+
 

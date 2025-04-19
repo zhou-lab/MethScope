@@ -1,0 +1,198 @@
+---
+title: "20250404_spatial"
+output: html_document
+date: "2025-04-04"
+---
+
+```{r}
+library(Seurat)
+library(ArchR)
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLB14DM/SpMETSLB14DM.cg",reference_pattern)
+valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240331_B14D_barcodesK.rds")
+input_pattern <- input_pattern[rownames(input_pattern) %in% valid_barcodes,]
+#saveRDS(input_pattern,"~/cell_type/20250408_P21_input.rds")
+
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
+
+library(nnls)
+nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000) {
+  ref <- t(ref[,1:number_patterns])
+  mixture_matrix <- t(mixture_matrix[,1:number_patterns])
+  mixture_matrix <- mixture_matrix[rownames(ref),]
+  result <- apply(mixture_matrix, 2, function(sample) {
+    fit <- nnls(ref, sample)
+    prop <- fit$x
+    prop / sum(prop)
+  })
+  colnames(result) <- colnames(mixture_matrix)
+  rownames(result) <- colnames(ref)
+  return(result)
+}
+
+input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 30)
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+
+# top_celltypes <- apply(cell_proportion, 2, function(x) {
+#   rownames(cell_proportion)[which.max(x)]
+# })
+# 
+# spatial_plot(as.factor(top_celltypes),colnames(cell_proportion))
+
+# training_model <- readRDS("/home/fuh1/intermediate/20250212_Liu2021_training_model.rds")
+# prediction_result <- PredictCellType(training_model,input_pattern,smooth = F)  
+
+input_pattern_imputed <- imputeRowMean(input_pattern)
+#input_pattern_imputed <- cbind(input_pattern_imputed,prediction_result[,1:length(training_model$cell_type)])
+input_pattern_imputed <- cbind(input_pattern_imputed,t(cell_proportion))
+
+P21_brain <- CreateSeuratObject(counts = t(input_pattern_imputed), assay = "DNAm")
+VariableFeatures(P21_brain) <- rownames(P21_brain[['DNAm']])
+DefaultAssay(P21_brain) <- "DNAm"
+P21_brain <- NormalizeData(P21_brain, assay = "DNAm", verbose = FALSE)
+P21_brain <- ScaleData(P21_brain, assay = "DNAm", verbose = FALSE)
+#P21_brain@assays$DNAm@layers$scale.data <- as.matrix(P21_brain@assays$DNAm@layers$counts)
+
+P21_brain <- RunPCA(P21_brain,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+P21_brain <- FindNeighbors(P21_brain, reduction = "mpca", dims = 1:30)
+P21_brain <- FindClusters(P21_brain, verbose = FALSE, resolution = 0.7)
+P21_brain <- RunUMAP(P21_brain, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+
+custom_colors <- c("#8A9FD1","#FEE500","#89C75F","#D51F26","#F47D2B","#D8A767","#89288F","#208A42")
+P21_brain$DNAm_snn_res.0.7 <- paste0("D",P21_brain$DNAm_snn_res.0.7)
+DimPlot(P21_brain, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7',cols=custom_colors, pt.size = 0.7,alpha = 0.7)  + NoGrid() + ggtitle("")
+ggsave("~/figures/fuh1/20250213_P21_MethScope_umap.pdf",width=3,height=3)
+
+partition <- Idents(P21_brain)
+#partition <- P21_brain$MethScope
+
+spatial_barcode <- colnames(P21_brain)
+spatial_plot(partition,spatial_barcode) + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE)
+ggsave("~/figures/fuh1/20250213_P21_MethScope.pdf",width=4.5,height=4)
+#saveRDS(P21_brain,"~/cell_type/20250408_P21_input_obj.rds")
+
+custom_colors <- c("#FEE500","#8A9FD1","#D8A767","#89288F","#D51F26")
+P21_brain_orig <- readRDS("~/tmp/20231115_spatial_window/spatial.obj_06022024.rds")
+DefaultAssay(P21_brain_orig) <- 'DNAm_frac_CG'
+DimPlot(P21_brain_orig, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_CG_snn_res.0.6',cols=custom_colors,pt.size = 0.7,alpha = 0.7) + NoGrid() + ggtitle("")
+ggsave("~/figures/fuh1/20250213_P21_VMR_umap.pdf",width=3,height=3)
+
+P21_brain_orig_barcode <- sub("\\..*$", "", colnames(P21_brain_orig))
+P21_brain_orig_barcode <- paste0(substr(P21_brain_orig_barcode,9,16), substr(P21_brain_orig_barcode,1,8))
+
+digits <- as.integer(gsub("D", "", P21_brain_orig@meta.data$DNAm_CG_snn_res.0.6))
+
+spatial_plot(as.factor(digits),valid_barcodes) + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE)
+ggsave("~/figures/fuh1/20250213_P21_VMR.pdf",width=4.5,height=4)
+```
+
+### plot cell type proportions
+```{r}
+prop_df <- as.data.frame(t(cell_proportion))
+prop_df$group <- Idents(P21_brain)  # add group label
+
+avg_props <- prop_df %>%
+  group_by(group) %>%
+  summarise(across(.cols = everything(), .fns = mean))
+
+avg_props_mat <- as.data.frame(t(avg_props[,-1]))  # drop group column before transposing
+colnames(avg_props_mat) <- avg_props$group
+rownames(avg_props_mat) <- rownames(cell_proportion)
+
+avg_props_mat_filtered <- avg_props_mat[rowSums(avg_props_mat[,-ncol(avg_props_mat)]) > 0.1, ]
+avg_props_norm <- sweep(avg_props_mat_filtered, 2, colSums(avg_props_mat_filtered), FUN = "/")
+
+
+avg_props_norm$CellType <- rownames(avg_props_norm)
+avg_props_long <- melt(avg_props_norm, id.vars = "CellType", variable.name = "Group", value.name = "Proportion")
+
+
+#cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+
+n_clusters <- length(unique(avg_props_long$CellType))
+cols <- as.character(ArchRPalettes$grove[seq_len(n_clusters)])
+
+ggplot(avg_props_long, aes(x = Group, y = Proportion, fill = CellType)) +
+  geom_bar(stat = "identity") +
+  theme_bw() +
+  ylab("Average Proportion") +
+  xlab("")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+         panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  guides(fill = guide_legend(title = "")) + scale_fill_manual(values=cols)
+ggsave("~/figures/fuh1/20250213_P21_MethScope_proportion.pdf",width=5,height=4)
+
+
+# heatmap
+
+library(pheatmap)
+prop_mat <- cell_proportion
+# Reorder samples by cluster
+cluster_vec <- Idents(P21_brain)
+cluster_order <- order(cluster_vec)
+prop_ordered <- prop_mat[, cluster_order]  # reorder columns
+clusters <- cluster_vec[cluster_order]
+
+# Optional: assign a color per cluster
+cluster_levels <- unique(clusters)
+cluster_colors <- setNames(c("#8A9FD1","#FEE500","#89C75F","#D51F26","#F47D2B","#D8A767","#89288F","#208A42"), cluster_levels)
+
+# Prepare annotation for columns (samples)
+annotation_col <- data.frame(Cluster = clusters)
+rownames(annotation_col) <- colnames(prop_ordered)
+
+# Plot the heatmap
+pdf("~/figures/fuh1/20250411_P21_proportion.pdf",width=6,height=4.5)
+pheatmap(prop_ordered,
+         cluster_rows = FALSE,
+         cluster_cols = FALSE,
+         annotation_col = annotation_col,
+         annotation_colors = list(Cluster = cluster_colors),
+         show_colnames = FALSE,
+         fontsize_row = 10,
+         scale = "none",
+         main = "")
+dev.off()
+
+```
+
+```{r}
+library(ArchR)
+spatial_plot <- function(partition,spatial_barcode){
+  set.seed(123)
+  group <- partition
+  max <- max(as.numeric(group))
+  spatial_coordinate <- read.table("~/SpM/spatial_barcodes.txt",sep="\t")
+  idx <- match(spatial_barcode,spatial_coordinate$V4)
+  spatial_coordinate_filter <- spatial_coordinate[idx,]
+  spatial_heatmap <- cbind(spatial_coordinate_filter$V2,spatial_coordinate_filter$V3,group)
+  rownames(spatial_heatmap) <- spatial_barcode
+  empty_barcode_idx <- which(!spatial_coordinate$V4 %in% rownames(spatial_heatmap))
+  empty_barcode <- cbind(spatial_coordinate[empty_barcode_idx,]$V2,spatial_coordinate[empty_barcode_idx,]$V3,rep(NA,length(empty_barcode_idx)))
+  spatial_heatmap <- as.data.frame(rbind(spatial_heatmap,empty_barcode))
+  spatial_cluster <- cbind(rownames(spatial_heatmap),spatial_heatmap$group)
+  colnames(spatial_cluster) <- c("barcode","group")
+  spatial_cluster <- as.data.frame(spatial_cluster)
+  spatial_cluster$group <- as.numeric(spatial_cluster$group)-1
+  spatial_heatmap <- as.data.frame(spatial_heatmap)
+  spatial_heatmap$V1 <- as.factor(spatial_heatmap$V1)
+  spatial_heatmap$V2 <- as.factor(spatial_heatmap$V2)
+  spatial_heatmap$group <- spatial_cluster$group
+  spatial_heatmap$group <- ifelse(is.na(spatial_heatmap$group),spatial_heatmap$group,paste0("D",spatial_heatmap$group))
+  spatial_heatmap$group <- factor(spatial_heatmap$group, levels = paste0("D", c(0:(max-1))))
+  # n_clusters <- length(unique(spatial_heatmap$group))
+  # cols <- ArchRPalettes$stallion[as.character(seq_len(n_clusters))]
+  # names(cols) <- levels(spatial_heatmap$group)
+  spatial <- ggplot(spatial_heatmap, aes(V2, V1))+
+    geom_point(aes(color=group),size = 1.5) +
+    theme_bw() + xlab("") + ylab("")+scale_x_discrete(limits = rev(levels(spatial_heatmap$V2)))+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.border = element_blank())+
+    theme(legend.title=element_blank())+
+    coord_fixed(ratio=1)+ scale_y_discrete(limits=rev)+scale_color_discrete(na.value="white",na.translate = FALSE)+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+    theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_blank(),
+          axis.ticks.y = element_blank())
+  return(spatial)
+}
+```
