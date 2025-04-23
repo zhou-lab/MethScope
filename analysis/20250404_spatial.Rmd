@@ -127,7 +127,11 @@ ggsave("~/figures/fuh1/20250213_P21_MethScope_proportion.pdf",width=5,height=4)
 # heatmap
 
 library(pheatmap)
-prop_mat <- cell_proportion
+cell_proportion_z <- t(scale(t(cell_proportion), center = TRUE, scale = TRUE))
+cell_proportion_z_clean <- cell_proportion_z[!apply(cell_proportion_z, 1, function(x) all(is.na(x))), ]
+cell_proportion_z_clean <- cell_proportion_z_clean[apply(cell_proportion_z_clean, 1, function(x) all(abs(x) <= 20)), ]
+cell_proportion_z_clean <- pmax(pmin(cell_proportion_z_clean, 3), -3)
+prop_mat <- cell_proportion_z_clean
 # Reorder samples by cluster
 cluster_vec <- Idents(P21_brain)
 cluster_order <- order(cluster_vec)
@@ -143,7 +147,7 @@ annotation_col <- data.frame(Cluster = clusters)
 rownames(annotation_col) <- colnames(prop_ordered)
 
 # Plot the heatmap
-pdf("~/figures/fuh1/20250411_P21_proportion.pdf",width=6,height=4.5)
+pdf("~/figures/fuh1/20250422_P21_proportion.pdf",width=6,height=4.5)
 pheatmap(prop_ordered,
          cluster_rows = FALSE,
          cluster_cols = FALSE,
@@ -152,7 +156,8 @@ pheatmap(prop_ordered,
          show_colnames = FALSE,
          fontsize_row = 10,
          scale = "none",
-         main = "")
+         main = "",
+         color = hcl.colors(50, "BluYl"))
 dev.off()
 
 ```

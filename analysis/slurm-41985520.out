@@ -1,0 +1,27 @@
+Loading required package: usethis
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:readr’:
+
+    col_factor
+
+ℹ Loading MethScope
+[1]	train-mlogloss:0.633939 
+[21]	train-mlogloss:0.015481 
+[41]	train-mlogloss:0.009250 
+[61]	train-mlogloss:0.008329 
+[81]	train-mlogloss:0.008054 
+[87]	train-mlogloss:0.008019 
+Execution time: 771 seconds
