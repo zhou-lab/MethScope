@@ -4,12 +4,14 @@
 \alias{PlotConfusion}
 \title{Generate confusion table for the final prediction}
 \usage{
-PlotConfusion(prediction_result, actual_label)
+PlotConfusion(prediction_result, actual_label, log2 = F)
 }
 \arguments{
 \item{prediction_result}{Prediction result from PredictCellType}
 
 \item{actual_label}{Ground truth cell label}
+
+\item{log2}{Log scale count (Default: False)}
 }
 \value{
 A ggplot2 confusion table object.

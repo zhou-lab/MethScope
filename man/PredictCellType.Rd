@@ -16,7 +16,7 @@ PredictCellType(bst_model, predictMatrix, smooth = FALSE, KNeighbor = 5)
 \item{KNeighbor}{number of knn neighbors to use for smoothing (Default: 5)}
 }
 \value{
-A cell by pattern matrix with confidence score and labeled cell type.
+A cell by cell type matrix with confidence score and labeled cell type.
 }
 \description{
 Predict cell type annotation from the trained model

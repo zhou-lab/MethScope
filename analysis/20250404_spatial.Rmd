@@ -19,7 +19,9 @@ library(nnls)
 nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000) {
   ref <- t(ref[,1:number_patterns])
   mixture_matrix <- t(mixture_matrix[,1:number_patterns])
-  mixture_matrix <- mixture_matrix[rownames(ref),]
+  common_rows <- intersect(rownames(ref), rownames(mixture_matrix))
+  ref <- ref[common_rows, , drop = FALSE]
+  mixture_matrix <- mixture_matrix[common_rows, , drop = FALSE]
   result <- apply(mixture_matrix, 2, function(sample) {
     fit <- nnls(ref, sample)
     prop <- fit$x
@@ -62,21 +64,22 @@ P21_brain <- RunUMAP(P21_brain, reduction = "mpca",  reduction.name = "meth.umap
 custom_colors <- c("#8A9FD1","#FEE500","#89C75F","#D51F26","#F47D2B","#D8A767","#89288F","#208A42")
 P21_brain$DNAm_snn_res.0.7 <- paste0("D",P21_brain$DNAm_snn_res.0.7)
 DimPlot(P21_brain, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7',cols=custom_colors, pt.size = 0.7,alpha = 0.7)  + NoGrid() + ggtitle("")
-ggsave("~/figures/fuh1/20250213_P21_MethScope_umap.pdf",width=3,height=3)
+#ggsave("~/figures/fuh1/20250213_P21_MethScope_umap.pdf",width=3,height=3)
 
 partition <- Idents(P21_brain)
 #partition <- P21_brain$MethScope
 
 spatial_barcode <- colnames(P21_brain)
 spatial_plot(partition,spatial_barcode) + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE)
-ggsave("~/figures/fuh1/20250213_P21_MethScope.pdf",width=4.5,height=4)
+#ggsave("~/figures/fuh1/20250213_P21_MethScope.pdf",width=4.5,height=4)
 #saveRDS(P21_brain,"~/cell_type/20250408_P21_input_obj.rds")
+
 
 custom_colors <- c("#FEE500","#8A9FD1","#D8A767","#89288F","#D51F26")
 P21_brain_orig <- readRDS("~/tmp/20231115_spatial_window/spatial.obj_06022024.rds")
 DefaultAssay(P21_brain_orig) <- 'DNAm_frac_CG'
 DimPlot(P21_brain_orig, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_CG_snn_res.0.6',cols=custom_colors,pt.size = 0.7,alpha = 0.7) + NoGrid() + ggtitle("")
-ggsave("~/figures/fuh1/20250213_P21_VMR_umap.pdf",width=3,height=3)
+#ggsave("~/figures/fuh1/20250213_P21_VMR_umap.pdf",width=3,height=3)
 
 P21_brain_orig_barcode <- sub("\\..*$", "", colnames(P21_brain_orig))
 P21_brain_orig_barcode <- paste0(substr(P21_brain_orig_barcode,9,16), substr(P21_brain_orig_barcode,1,8))
@@ -84,7 +87,12 @@ P21_brain_orig_barcode <- paste0(substr(P21_brain_orig_barcode,9,16), substr(P21
 digits <- as.integer(gsub("D", "", P21_brain_orig@meta.data$DNAm_CG_snn_res.0.6))
 
 spatial_plot(as.factor(digits),valid_barcodes) + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE)
-ggsave("~/figures/fuh1/20250213_P21_VMR.pdf",width=4.5,height=4)
+#ggsave("~/figures/fuh1/20250213_P21_VMR.pdf",width=4.5,height=4)
+
+cell_type <- "CT-L6"
+spatial_plot(cell_proportion[cell_type,],names(cell_proportion[cell_type,]))+labs(color = cell_type)
+ggsave(paste0("~/figures/fuh1/20250501_P21_",cell_type,".pdf"),width=4.5,height=4)
+
 ```
 
 ### plot cell type proportions
@@ -163,41 +171,304 @@ dev.off()
 ```
 
 ```{r}
-library(ArchR)
-spatial_plot <- function(partition,spatial_barcode){
+library(viridis)
+spatial_plot <- function(partition, spatial_barcode) {
   set.seed(123)
   group <- partition
-  max <- max(as.numeric(group))
-  spatial_coordinate <- read.table("~/SpM/spatial_barcodes.txt",sep="\t")
-  idx <- match(spatial_barcode,spatial_coordinate$V4)
-  spatial_coordinate_filter <- spatial_coordinate[idx,]
-  spatial_heatmap <- cbind(spatial_coordinate_filter$V2,spatial_coordinate_filter$V3,group)
+  spatial_coordinate <- read.table("~/SpM/spatial_barcodes.txt", sep = "\t")
+  # Match spatial barcodes to coordinates
+  idx <- match(spatial_barcode, spatial_coordinate$V4)
+  spatial_coordinate_filter <- spatial_coordinate[idx, ]
+  spatial_heatmap <- cbind(spatial_coordinate_filter$V2, spatial_coordinate_filter$V3, group)
   rownames(spatial_heatmap) <- spatial_barcode
+  # Add empty (missing) barcodes
   empty_barcode_idx <- which(!spatial_coordinate$V4 %in% rownames(spatial_heatmap))
-  empty_barcode <- cbind(spatial_coordinate[empty_barcode_idx,]$V2,spatial_coordinate[empty_barcode_idx,]$V3,rep(NA,length(empty_barcode_idx)))
-  spatial_heatmap <- as.data.frame(rbind(spatial_heatmap,empty_barcode))
-  spatial_cluster <- cbind(rownames(spatial_heatmap),spatial_heatmap$group)
-  colnames(spatial_cluster) <- c("barcode","group")
-  spatial_cluster <- as.data.frame(spatial_cluster)
-  spatial_cluster$group <- as.numeric(spatial_cluster$group)-1
-  spatial_heatmap <- as.data.frame(spatial_heatmap)
+  empty_barcode <- cbind(spatial_coordinate[empty_barcode_idx, ]$V2,
+                         spatial_coordinate[empty_barcode_idx, ]$V3,
+                         rep(NA, length(empty_barcode_idx)))
+  spatial_heatmap <- as.data.frame(rbind(spatial_heatmap, empty_barcode))
+  colnames(spatial_heatmap) <- c("V1", "V2", "group")
+  # Factorize and format
   spatial_heatmap$V1 <- as.factor(spatial_heatmap$V1)
   spatial_heatmap$V2 <- as.factor(spatial_heatmap$V2)
-  spatial_heatmap$group <- spatial_cluster$group
-  spatial_heatmap$group <- ifelse(is.na(spatial_heatmap$group),spatial_heatmap$group,paste0("D",spatial_heatmap$group))
-  spatial_heatmap$group <- factor(spatial_heatmap$group, levels = paste0("D", c(0:(max-1))))
-  # n_clusters <- length(unique(spatial_heatmap$group))
-  # cols <- ArchRPalettes$stallion[as.character(seq_len(n_clusters))]
-  # names(cols) <- levels(spatial_heatmap$group)
-  spatial <- ggplot(spatial_heatmap, aes(V2, V1))+
-    geom_point(aes(color=group),size = 1.5) +
-    theme_bw() + xlab("") + ylab("")+scale_x_discrete(limits = rev(levels(spatial_heatmap$V2)))+
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.border = element_blank())+
-    theme(legend.title=element_blank())+
-    coord_fixed(ratio=1)+ scale_y_discrete(limits=rev)+scale_color_discrete(na.value="white",na.translate = FALSE)+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-    theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_blank(),
+  # Check if group is numeric
+  is_continuous <- is.numeric(group)
+  # Convert group to appropriate type
+  if (is_continuous) {
+    spatial_heatmap$group <- as.numeric(spatial_heatmap$group)
+  } else {
+    spatial_heatmap$group <- factor(spatial_heatmap$group)
+  }
+  # Begin plotting
+  p <- ggplot(spatial_heatmap, aes(x = V2, y = V1)) +
+    geom_point(aes(color = group), size = 1.5, na.rm = TRUE) +
+    theme_bw() +
+    xlab("") + ylab("") +
+    scale_x_discrete(limits = rev(levels(spatial_heatmap$V2))) +
+    scale_y_discrete(limits = rev) +
+    coord_fixed(ratio = 1) +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_blank(),
           axis.ticks.y = element_blank())
-  return(spatial)
+  # Apply appropriate color scale
+  if (is_continuous) {
+    p <- p + scale_color_viridis_c(na.value = "white", option = "viridis")
+  } else {
+    p <- p + scale_color_discrete(na.value = "white", na.translate = FALSE)
+  }
+  return(p)
 }
 ```
+
+
+### Human lymph node 
+
+parallel -j 20 'biscuit vcf2bed -k 1 -c {} | awk -v OFS="\t" '\''{ print $1, $2+1, $3, $4, $5, $6 }'\'' > {.}.cov' ::: *.vcf.gz
+scbs prepare *.cov ../../scbs/SpMETSLHLN4D
+
+### use knee plot to determine minimum CG number for filter
+### scbs filter --min-sites 63412 --min-meth 0 --max-meth 100 SpMETSLHLN4D SpMETSLHLN4D_filtered
+
+scbs smooth SpMETSLHLN4D
+scbs scan --threads 20 SpMETSLHLN4D SpMETSLHLN4D.bed
+scbs matrix --threads 20 SpMETSLHLN4D.bed SpMETSLHLN4D SpMETSLHLN4D_matrix
+
+```{r}
+data_sample <- "SpMETRTHLN4RXT19"
+path <- paste(paste("/mnt/isilon/zhou_lab/projects/20230531_Spatial_methseq/RNA/", data_sample, sep = '/'), "raw", sep = '/')
+gene_matrix <- Read10X(data.dir = path)
+assay = "Spatial"
+filter.matrix = TRUE
+slice = "slice1"
+object <- CreateSeuratObject(counts = gene_matrix, assay = assay)
+image <- Read10X_Image(image.dir = "/mnt/isilon/zhou_lab/projects/20230531_Spatial_methseq/Spatial/10_SpMETSLHLN4D_SpMETRTHLN4RXT19/spatial", filter.matrix = filter.matrix)
+image <- image[Cells(x = object)]
+DefaultAssay(object = image) <- assay
+object[[slice]] <- image
+problematic_cells <- which(object$nCount_Spatial == 0)
+if (length(problematic_cells) > 0) {
+  object <- subset(object, cells = -problematic_cells)
+}
+spatial.obj <- object
+spatial.obj <- suppressWarnings(SCTransform(spatial.obj, assay = "Spatial",verbose=TRUE))
+RNA_data <- spatial.obj@assays$SCT$scale.data
+spatial.obj <- RunPCA(spatial.obj, assay = "SCT", verbose = FALSE)
+spatial.obj <- FindNeighbors(spatial.obj, reduction = "pca", dims = 1:30,random.seed = 123)
+spatial.obj <- FindClusters(spatial.obj, verbose = FALSE, resolution = 0.6,random.seed = 123)
+spatial.obj <- RunUMAP(spatial.obj, reduction = "pca", dims = 1:30)
+
+meth_mtx <- read.csv("~/tmp/Spatial_methseq/scbs/SpMETSLHLN4D_matrix/methylation_fractions.csv.gz", row.names=1) %>% as.matrix()
+### tbl from yame summary
+tbl$V8 <- as.numeric(tbl$V8)
+barcodes_pass <- tbl %>% filter(V8 > 63412) %>% select(V2)
+barcodes_pass <- barcodes_pass[,1]
+filter_barcode <- sub("\\..*$", "", rownames(meth_mtx))
+rownames(meth_mtx) <- filter_barcode
+DNAm_data <- meth_mtx[rownames(meth_mtx) %in% barcodes_pass,]
+DNAm_data <- as.data.frame(DNAm_data)
+spatial_barcode <- sub("\\..*$", "", rownames(DNAm_data))
+spatial_coordinate <- read.table("~/SpM/spatial_barcodes.txt",sep="\t")
+image_barcode <- rownames(spatial.obj@images$slice1@coordinates)
+image_barcode <- str_replace_all(image_barcode, "C", "T")
+image_barcode = paste0(substr(image_barcode,9,16), substr(image_barcode,1,8))
+image_barcode <- image_barcode[which(image_barcode %in% spatial_barcode)]
+idx <- match(image_barcode,spatial_coordinate$V4)
+spatial_coordinate_filter <- spatial_coordinate[idx,]
+idx <- match(spatial_coordinate_filter$V4,spatial_barcode)
+DNAm_data <- DNAm_data[idx,]
+spatial_barcode <- spatial_barcode[idx]
+barcodes_to_keep <- sub("\\..*$", "", rownames(DNAm_data))
+#saveRDS(barcodes_to_keep,"/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250430_HLN4D_barcodesK.rds")
+```
+
+### imputation
+```{r}
+library(irlba)
+# PCA that iteratively imputes missing values
+imputeColMean <- function(mtx) {
+  #na_percentage <- sapply(mtx, function(x) sum(is.na(x)) / length(x)) * 100
+  #mtx <- mtx[, na_percentage < 20]
+  k <- which(is.na(mtx), arr.ind=TRUE)
+  mtx[k] <- colMeans(mtx, na.rm=TRUE)[k[,2]]
+  mtx
+}
+
+prcomp_iterative <- function(x, n=10, n_iter=100, min_gain=0.01, ...) {
+  mse <- rep(NA, n_iter)
+  na_loc <- is.na(x)
+  x <- imputeColMean(x)
+  #x[na_loc] = 0  # 0 is our first guess
+  for (i in 1:n_iter) {
+    prev_imp <- x[na_loc]  # what we imputed in the previous round
+    # PCA on the imputed matrix
+    pr <- prcomp_irlba(x, center = T, scale. = F, n = n, ...)
+    # impute missing values with PCA
+    new_imp <- (pr$x %*% t(pr$rotation))[na_loc]
+    x[na_loc] <- new_imp
+    # compare our new imputed values to the ones from the previous round
+    mse[i] = mean((prev_imp - new_imp) ^ 2)
+    # if the values didn't change a lot, terminate the iteration
+    gain <- mse[i] / max(mse, na.rm = T)
+    if (gain < min_gain) {
+      message(paste(c("\n\nTerminated after ", i, " iterations.")))
+      break
+    }
+  }
+  pr$mse_iter <- mse[1:i]
+  list(pr,x)
+}
+
+pca <- DNAm_data %>%
+  scale(center = T, scale = F) %>%
+  prcomp_iterative(n = 30, n_iter = 100)
+saveRDS(pca,"~/tmp/20250430_tmp.rds")
+```
+
+```{r}
+data_sample <- "SpMETRTHLN4RXT19"
+path <- paste(paste("/mnt/isilon/zhou_lab/projects/20230531_Spatial_methseq/RNA/", data_sample, sep = '/'), "raw", sep = '/')
+gene_matrix <- Read10X(data.dir = path)
+bc_df <- data.frame(RNA_bc=colnames(gene_matrix), row.names = colnames(gene_matrix))
+bc_df$DNA_bc <- str_replace_all(bc_df$RNA_bc, "C", "T")
+rownames(bc_df) <- bc_df$DNA_bc
+
+### from imputation
+DNAm_data <- as.data.frame(pca[[2]])
+### scale this from 0 to 1
+DNAm_data <- as.data.frame(lapply(DNAm_data, function(x) (x - min(x)) / (max(x) - min(x))))
+DNAm_matrix <- DNAm_data
+rownames(DNAm_matrix) <- rownames(pca[[2]])
+
+rownames(DNAm_matrix) <- sub("\\..*$", "", rownames(DNAm_matrix))
+rownames(DNAm_matrix) <- paste0(substr(rownames(DNAm_matrix),9,16), substr(rownames(DNAm_matrix),1,8))
+bc_df <- bc_df[rownames(DNAm_matrix),]
+all(rownames(bc_df)==rownames(DNAm_matrix))
+rownames(DNAm_matrix) <- bc_df$RNA_bc
+DNAm_matrix <- t(DNAm_matrix)
+
+assay = "RNA"
+filter.matrix = TRUE
+slice = "slice1"
+object <- CreateSeuratObject(counts = gene_matrix, assay = assay)
+
+image <- Read10X_Image(image.dir = "/mnt/isilon/zhou_lab/projects/20230531_Spatial_methseq/Spatial/10_SpMETSLHLN4D_SpMETRTHLN4RXT19/spatial", filter.matrix = filter.matrix)
+image <- image[Cells(x = object)]
+DefaultAssay(object = image) <- assay
+object[[slice]] <- image
+spatial.obj <- object
+### keep only barcodes that pass through two criterias
+spatial.obj <- subset(spatial.obj, cells=colnames(DNAm_matrix))
+
+
+spatial.obj[['DNAm']] <- CreateAssayObject(counts = DNAm_matrix)
+DefaultAssay(spatial.obj) <- "DNAm"
+VariableFeatures(spatial.obj) <- rownames(spatial.obj[["DNAm"]])
+spatial.obj@assays$DNAm@scale.data <- as.matrix(spatial.obj@assays$DNAm@counts)
+
+spatial.obj <- RunPCA(spatial.obj, assay = "DNAm", reduction.name = 'mpca', verbose = FALSE)
+
+#spatial.obj <- readRDS("~/cell_type/20250430_human_spatial.rds")
+
+spatial.obj <- FindNeighbors(spatial.obj, reduction = "mpca", dims = 1:30)
+spatial.obj <- FindClusters(spatial.obj, verbose = FALSE, resolution = 1)
+spatial.obj <- RunUMAP(spatial.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+
+
+
+spatial.obj$DNAm_snn_res.1<- paste0('D', spatial.obj$DNAm_snn_res.1)
+n_clusters <- length(unique(spatial.obj$DNAm_snn_res.1))
+cols <- c("#D51F26","#272E6A","#208A42","#89288F")
+
+DimPlot(spatial.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.1',pt.size = 0.7,alpha = 0.7,cols=cols) + NoGrid() + ggtitle("")
+ggsave("~/figures/fuh1/20250501_HLN4_VMR_umap.pdf",width=3,height=3)
+
+spatial.obj_barcode <- sub("\\..*$", "", colnames(spatial.obj))
+spatial.obj_barcode <- paste0(substr(spatial.obj_barcode,9,16), substr(spatial.obj_barcode,1,8))
+
+digits <- as.integer(gsub("D", "", spatial.obj@meta.data$DNAm_snn_res.1))
+valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250430_HLN4D_barcodesK.rds")
+
+spatial_plot(as.factor(digits),valid_barcodes) + scale_color_manual(values=cols,na.value="white",na.translate = FALSE,labels = c("D0", "D1", "D2")) + labs(color ="")
+#ggsave("~/figures/fuh1/20250501_HLN4_VMR.pdf",width=4.5,height=4)
+```
+
+
+### VMR and MethScope clustering
+
+```{r}
+library(Seurat)
+library(ArchR)
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLHLN4D/SpMETSLHLN4D.cg",reference_pattern)
+valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250430_HLN4D_barcodesK.rds")
+input_pattern <- input_pattern[rownames(input_pattern) %in% valid_barcodes,]
+#saveRDS(input_pattern,"~/cell_type/20250423_HLN4_input.rds")
+
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
+
+library(nnls)
+nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000) {
+  ref <- t(ref[,1:number_patterns])
+  mixture_matrix <- t(mixture_matrix[,1:number_patterns])
+  common_rows <- intersect(rownames(ref), rownames(mixture_matrix))
+  ref <- ref[common_rows, , drop = FALSE]
+  mixture_matrix <- mixture_matrix[common_rows, , drop = FALSE]
+  mixture_matrix <- mixture_matrix[rownames(ref),]
+  result <- apply(mixture_matrix, 2, function(sample) {
+    fit <- nnls(ref, sample)
+    prop <- fit$x
+    prop / sum(prop)
+  })
+  colnames(result) <- colnames(mixture_matrix)
+  rownames(result) <- colnames(ref)
+  return(result)
+}
+
+input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 30)
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+input_pattern_imputed <- cbind(input_pattern_imputed,t(cell_proportion))
+
+# all_na_rows <- apply(input_pattern, 1, function(x) all(is.na(x)))
+# input_pattern_filtered <- input_pattern[!all_na_rows, ]
+# input_pattern_imputed <- imputeRowMean(input_pattern_filtered,na_percent = 40)
+
+input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 30)
+lymph_spatial <- CreateSeuratObject(counts = t(input_pattern_imputed), assay = "DNAm")
+VariableFeatures(lymph_spatial) <- rownames(lymph_spatial[['DNAm']])
+DefaultAssay(lymph_spatial) <- "DNAm"
+lymph_spatial <- NormalizeData(lymph_spatial, assay = "DNAm", verbose = FALSE)
+lymph_spatial <- ScaleData(lymph_spatial, assay = "DNAm", verbose = FALSE)
+#lymph_spatial@assays$DNAm@layers$scale.data <- as.matrix(lymph_spatial@assays$DNAm@layers$counts)
+
+lymph_spatial <- RunPCA(lymph_spatial,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+lymph_spatial <- FindNeighbors(lymph_spatial, reduction = "mpca", dims = 1:10)
+lymph_spatial <- FindClusters(lymph_spatial, verbose = FALSE, resolution = 0.7)
+lymph_spatial <- RunUMAP(lymph_spatial, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:10)
+
+#custom_colors <- c("#8A9FD1","#FEE500","#89C75F","#D51F26","#F47D2B","#D8A767","#89288F","#208A42")
+lymph_spatial$DNAm_snn_res.0.7 <- paste0("D",lymph_spatial$DNAm_snn_res.0.7)
+DimPlot(lymph_spatial, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', pt.size = 0.7,alpha = 0.7)  + NoGrid() + ggtitle("")
+
+
+#ggsave("~/figures/fuh1/20250423_P21_MethScope_umap.pdf",width=3,height=3)
+
+partition <- Idents(lymph_spatial)
+#prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000,input_pattern,smooth = T,KNeighbor = 2)
+#partition <- P21_brain$MethScope
+
+spatial_barcode <- colnames(lymph_spatial)
+spatial_plot(partition,spatial_barcode) # + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE)
+#ggsave("~/figures/fuh1/20250501_HLN4_MethScope.pdf",width=4.5,height=4)
+
+
+cell_type <- "Hema_Mast"
+spatial_plot(cell_proportion[cell_type,],names(cell_proportion[cell_type,]))+labs(color = cell_type)
+
+ggsave(paste0("~/figures/fuh1/20250501_HLN4_",cell_type,".pdf"),width=4.5,height=4)
+```
+

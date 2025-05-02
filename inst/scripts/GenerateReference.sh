@@ -7,7 +7,7 @@
 #SBATCH -t 30:00:00
 
 ### change these parameters accordingly
-path="/home/fuh1/cell_type/20250418_eckerhuman.tsv" # path for the cell type label tsv
+path="/home/fuh1/cell_type/20250425_eckerhuman.tsv" # path for the cell type label tsv
 cg_path="/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg" # path for the .cg data
 ### Note: row names might be the first index, so you should add 1 to the index if that's the case 
 ### use cut -f to check that's the right index column 

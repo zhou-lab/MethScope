@@ -4,7 +4,7 @@
 #' @param predictMatrix A wide cell by pattern matrix generated from GenerateInput function
 #' @param smooth A Boolean variable to indicate whether smooth the matrix (Default: FALSE)
 #' @param KNeighbor number of knn neighbors to use for smoothing (Default: 5)
-#' @return A cell by pattern matrix with confidence score and labeled cell type.
+#' @return A cell by cell type matrix with confidence score and labeled cell type.
 #' @import xgboost
 #' @importFrom stats setNames
 #' @importFrom dplyr mutate
@@ -121,4 +121,31 @@ filter_cell <- function(pred_result,knn_res,KNeighbor = 5){
     pred_result$prediction_label[i] <- majority_vote(knn_res$nn.index[i,])
   }
   pred_result
+}
+
+
+#' Estimate cell type relative proportion
+#'
+#' @param ref An imputed wide cell by pattern matrix generated from GenerateInput function using reference Pseudobulk
+#' @param mixture_matrix An imputed wide cell by pattern matrix generated from GenerateInput function
+#' @param number_patterns a numeric value to indicate number of patterns to be used (Default: 1000)
+#' @return A cell type by cell matrix showing the relative cell type proportion estimate for each cells 
+#' @import nnls
+#' @export
+#' 
+nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000) {
+  ref <- t(ref[,1:number_patterns])
+  mixture_matrix <- t(mixture_matrix[,1:number_patterns])
+  common_rows <- intersect(rownames(ref), rownames(mixture_matrix))
+  ref <- ref[common_rows, , drop = FALSE]
+  mixture_matrix <- mixture_matrix[common_rows, , drop = FALSE]
+  mixture_matrix <- mixture_matrix[rownames(ref),]
+  result <- apply(mixture_matrix, 2, function(sample) {
+    fit <- nnls(ref, sample)
+    prop <- fit$x
+    prop / sum(prop)
+  })
+  colnames(result) <- colnames(mixture_matrix)
+  rownames(result) <- colnames(ref)
+  return(result)
 }

@@ -8,7 +8,7 @@ devtools::load_all()
 # Define parameters
 #reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
 reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
-output_dir <- "/home/fuh1/intermediate/20250422_Zhou2024"
+output_dir <- "/home/fuh1/intermediate/20250429_Zhou2024"
 file_list <- list.files(output_dir, pattern = "*.cg$", full.names = TRUE)  # Get all .cg files
 
 num_cores <- 20
@@ -20,8 +20,8 @@ results <- foreach(file = file_list, .combine = 'c', .packages = c("MethScope"))
   input_pattern <- GenerateInput(file, reference_pattern)
   #Liu2021_MouseBrain_P1000 <- getFromNamespace("Liu2021_MouseBrain_P1000", "MethScope")
   #prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000, input_pattern, smooth = FALSE)
-  Zhou2025_MouseBrain_P3000 <- readRDS("/home/fuh1/intermediate/20250419_Zhou2025_training_model.rds")
-  prediction_result <- PredictCellType(Zhou2025_MouseBrain_P3000, input_pattern, smooth = FALSE)
+  Zhou2025_HumanSubtype_P3000 <- getFromNamespace("Zhou2025_HumanAtlas_P1000", "MethScope")
+  prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000, input_pattern, smooth = FALSE)
   # Generate unique output filenames
   file_base <- tools::file_path_sans_ext(basename(file))
   saveRDS(prediction_result, file.path(output_dir, paste0(file_base, "_prediction.rds")))

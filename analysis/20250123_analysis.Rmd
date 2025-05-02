@@ -159,7 +159,7 @@ p2
 ggsave("~/figures/fuh1/20250414_Haowu_umap_methscope.pdf",width=5.5,height=5)
 ```
 
-### Spatial mouse brain P21
+### mouse brain P21 just HPF and isocortex
 
 ```{r}
 library(readxl)
@@ -189,78 +189,124 @@ trained_model <- Input_training(input_pattern,sampled_celltype,cross_validation=
 saveRDS(trained_model,"/home/fuh1/intermediate/20250212_Liu2021_training_model.rds")
 ```
 
-
-### Spatial face E11
-
-```{r}
-barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240109_E24D_barcodesK.rds")
-#write.table(barcodes,"~/cell_type/20250130_P21.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
-
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
-input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLE23D/SpMETSLE23D_filter.cg",reference_pattern)
-
-summary_results <- utils::read.table("/mnt/isilon/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLE24D/SpMETSLE24D_cluster", header = TRUE) 
-input_pattern <- summary_results
-prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = T)
-
-umap_plot <- PlotUMAP(input_pattern,prediction_result)
-umap_plot[[1]]
-
-group <- as.factor(prediction_result$prediction_label)
-spatial_coordinate <- read.table("~/SpM/spatial_barcodes.txt",sep="\t")
-idx <- match(rownames(prediction_result),spatial_coordinate$V4)
-spatial_coordinate_filter <- spatial_coordinate[idx,]
-spatial_heatmap <- cbind(spatial_coordinate_filter$V2,spatial_coordinate_filter$V3,group)
-spatial_heatmap <- as.data.frame(spatial_heatmap)
-spatial_heatmap$V1 <- as.factor(spatial_heatmap$V1)
-spatial_heatmap$V2 <- as.factor(spatial_heatmap$V2)
-spatial_heatmap$group <- factor(spatial_heatmap$group, levels = 1:41, labels = levels(group))
-
-ggplot(spatial_heatmap, aes(V2, V1))+
-  geom_point(aes(color=group),size = 2) +
-  theme_bw() + xlab("") + ylab("")+scale_x_discrete(limits = rev(levels(spatial_heatmap$V2)))+
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.border = element_blank())+
-  guides(color=guide_legend(title="Cluster"))+
-  coord_fixed(ratio=1)+ scale_y_discrete(limits=rev)+#+scale_color_discrete(na.value="white")+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
-
 ### Single cell human atlas
 
 mergeCG2 /home/fuh1/tmp/2025_ecker/results /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg
 
 ```{r}
 meta <- read.csv("~/tmp/2025_ecker/5kCG100k3C_summary.csv")
+
+
+### for major type
 major_annotation <- read.table("~/tmp/2025_ecker/L1color.tsv",sep = '\t', header = TRUE)
-colnames(major_annotation) <- c("subtype","label","anno","color")
+colnames(major_annotation) <- c("majortype","label","anno","color")
+meta_updated <- meta %>%
+  left_join(major_annotation, by = "majortype") %>%
+  select(-majortype) 
+
+cg_idx <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg.idx")
+cg_idx <- cg_idx[which(cg_idx$V1 %in% meta_updated$cell),]
+meta_updated <- meta_updated[match(cg_idx$V1,meta_updated$cell),]
+write.table(meta_updated,"~/cell_type/20250418_eckerhuman_major.tsv",sep="\t",quote = F,col.names = T)
+
+### for subtype 
 minor_annotation <- read.table("~/tmp/2025_ecker/subtype_meta.tsv",sep = '\t', header = TRUE)
 minor_annotation$celltype_L2_both_abbr <- gsub(" \\d+$", "", minor_annotation$celltype_L2_both_abbr)
 colnames(minor_annotation) <- c("subtype","label","anno")
 meta_updated <- meta %>%
   left_join(minor_annotation, by = "subtype") %>%
-  select(-subtype) %>%
-  rename(subtype = label)
-
+  select(-subtype)
 
 cg_idx <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg.idx")
 cg_idx <- cg_idx[which(cg_idx$V1 %in% meta_updated$cell),]
 meta_updated <- meta_updated[match(cg_idx$V1,meta_updated$cell),]
-to_merge <- which(table(meta_updated$subtype) < 70)
-meta_updated$subtype[meta_updated$subtype == "DC HT"] <- "DC"
-meta_updated <- meta_updated[meta_updated$subtype != "ET L5",]
-meta_updated$subtype[meta_updated$subtype == "Fibro EndN Brn"] <- "Fibro EndN"
-meta_updated$subtype[meta_updated$subtype == "Fibro EndN Chndr"] <- "Fibro EndN"
-meta_updated$subtype[meta_updated$subtype == "Fibro GI WNT2B Co"] <- "Fibro GI Crypt Co"
-meta_updated$subtype[meta_updated$subtype == "Fibro GI Pb Lng"] <- "Fibro GI Alv"
-meta_updated$subtype[meta_updated$subtype == "Fibro HT Adipo"] <- "Fibro HT"
-meta_updated$subtype[meta_updated$subtype == "Fibro HT Ven"] <- "Fibro HT"
-meta_updated$subtype[meta_updated$subtype == "Fibro HT Atr"] <- "Fibro HT"
-meta_updated$subtype[meta_updated$subtype == "Schw Chrmf Adr"] <- "Schw Mix"
-meta_updated$subtype[meta_updated$subtype == "Schw Skn"] <- "Schw Mix"
-meta_updated <- meta_updated[meta_updated$subtype != "Sebo",]
-meta_updated$subtype[meta_updated$subtype == "Tmem CD8 Co"] <- "Tmem CD8 Mix"
+```
 
-#write.table(meta_updated,"~/cell_type/20250418_eckerhuman.tsv",sep="\t",quote = F,col.names = T)
+### merge cell types
+```{r}
+### merge subtypes by number of cells 
+to_merge <- which(table(meta_updated$label) < 300)
+
+meta_updated$label[meta_updated$label == "CLA"] <- "IT L6"
+meta_updated$label[meta_updated$label == "CT L6"] <- "IT L6"
+meta_updated$label[meta_updated$label == "L6b"] <- "IT L6"
+
+meta_updated$label[meta_updated$label == "DC HT"] <- "Mono"
+meta_updated$label[meta_updated$label == "DC"] <- "Mono"
+meta_updated$label[meta_updated$label == "Mono HT"] <- "Mono"
+macro_lineage <- minor_annotation$label[grepl("Hema Myeloid Macrophage", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% macro_lineage] <- "Macrophage"
+meta_updated <- meta_updated[meta_updated$label != "Hofb",]
+
+endo_lymph_lineage <- minor_annotation$label[grepl("Endo Lymphatic", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% endo_lymph_lineage] <- "Endo Lym"
+
+endo_vas_lineage <- minor_annotation$label[grepl("Endo Vascular", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% endo_vas_lineage] <- "Endo Vas"
+
+epi_gas_lineage <- minor_annotation$label[grepl("Epi Gastric", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% epi_gas_lineage] <- "Epi Gas"
+
+epi_ker_lineage <- minor_annotation$label[grepl("Epi Keratinous/Luminal", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% epi_ker_lineage] <- "Epi Krt/Lum"
+
+meta_updated <- meta_updated[meta_updated$label != "ET L5",]
+
+fib_edn_lineage <- minor_annotation$label[grepl("Fibro Endoneurial", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% fib_edn_lineage] <- "Fibro EndN"
+
+fib_gas_lineage <- minor_annotation$label[grepl("Fibro Gastrointestinal", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% fib_gas_lineage] <- "Fibro GI"
+
+meta_updated$label[meta_updated$label == "Fibro HT Adipo"] <- "Fibro HT"
+meta_updated$label[meta_updated$label == "Fibro HT Ven"] <- "Fibro HT"
+meta_updated$label[meta_updated$label == "Fibro HT Atr"] <- "Fibro HT"
+meta_updated$label[meta_updated$label == "Fibro Myo Myo Co"] <- "Fibro Myo"
+meta_updated$label[meta_updated$label == "Fibro Myo Esp"] <- "Fibro Myo"
+
+fib_adr_lineage <- minor_annotation$label[grepl("Fibro Adrenal", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% fib_adr_lineage] <- "Fibro Adr"
+
+fib_skin_lineage <- minor_annotation$label[grepl("Fibro Skin", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% fib_skin_lineage] <- "Fibro Sk"
+
+meta_updated <- meta_updated[meta_updated$label != "Gamma",]
+
+meta_updated$label[meta_updated$label == "Gob Ileum"] <- "Gob"
+meta_updated$label[meta_updated$label == "Gob Co"] <- "Gob"
+
+meta_updated$label[meta_updated$label == "LAMP5 LHX6"] <- "LAMP5"
+
+Mast_lineage <- minor_annotation$label[grepl("Hema Mast", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% Mast_lineage] <- "Hema Mast"
+
+meta_updated <- meta_updated[meta_updated$label != "Mus Stem",]
+
+meta_updated$label[meta_updated$label == "NK CD16 Lng"] <- "NK CD16"
+meta_updated$label[meta_updated$label == "NK CD16 Bld"] <- "NK CD16"
+
+meta_updated$label[meta_updated$label == "NK CD56 Mix"] <- "NK CD56"
+meta_updated$label[meta_updated$label == "NK ILC"] <- "NK CD56"
+meta_updated$label[meta_updated$label == "NK CD56 Skn"] <- "NK CD56"
+meta_updated$label[meta_updated$label == "NK CD56 Bld"] <- "NK CD56"
+
+Peri_lineage <- minor_annotation$label[grepl("Perivascular", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% Peri_lineage] <- "Perivascular"
+
+meta_updated$label[meta_updated$label == "PVALB ChC"] <- "PVALB"
+meta_updated$label[meta_updated$label == "PVALB BC"] <- "PVALB"
+
+neu_schw_lineage <- minor_annotation$label[grepl("Neu Schwann", minor_annotation$anno)]
+meta_updated$label[meta_updated$label %in% neu_schw_lineage] <- "Neu Schw"
+
+meta_updated <- meta_updated[meta_updated$label != "Stem",]
+meta_updated <- meta_updated[meta_updated$label != "Trans Amp",]
+
+Tmem_CD4 <- c("Tmem Tfh CD4 Int","Tmem Treg CD4 Skn","Tmem MAIT","Tmem CD4 GI","Tmem CD4 Lng","Tmem Tcm CD4 Bld","Tmem CD4 Skn")
+meta_updated$label[meta_updated$label %in% Tmem_CD4] <- "Tmem CD4"
+Tmem_CD8 <- c("Tmem Tem CD8 Mix","Tmem CD8 Co","Tmem Tem CD8 Bld","Tmem CD8 Mix","Tmem CD8 Esp","Tmem CD8 Ileum","Tmem gdT CD8 Lng")
+meta_updated$label[meta_updated$label %in% Tmem_CD8] <- "Tmem CD8"
+write.table(meta_updated,"~/cell_type/20250425_eckerhuman.tsv",sep="\t",quote = F,col.names = T)
 ```
 
 sbatch ./inst/scripts/GenerateReference.sh
@@ -269,23 +315,31 @@ sbatch ./inst/scripts/GenerateReference.sh
 
 ```{r}
 library(dplyr)
-meta_updated <- read.table("~/cell_type/20250418_eckerhuman.tsv",sep="\t")
+meta_updated <- read.table("~/cell_type/20250425_eckerhuman.tsv",sep="\t")
 sampled_celltype <- meta_updated %>%
-  group_by(subtype) %>%
-  sample_n(50)
+  group_by(label) %>%
+  sample_n(70)
 
 output_sample <- sampled_celltype$cell
-#write.table(output_sample,"~/cell_type/Zhou2025_sample.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+write.table(output_sample,"~/cell_type/Zhou2025_sample.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
 ```
 
 yame subset -l ~/cell_type/Zhou2025_sample.txt 2025_Zhou.cg -o ~/tmp/20240322_SparseM/Zhou2025_train.cg
 
 ```{r}
-meta_updated <- read.table("~/cell_type/20250418_eckerhuman.tsv",sep="\t")
+### subtype
+meta_updated <- read.table("~/cell_type/20250425_eckerhuman.tsv",sep="\t")
 train <- read.table("~/cell_type/Zhou2025_sample.txt",sep="\t")
 left_over_cells <- meta_updated %>% filter(!cell %in% train$V1)
 output_sample <- left_over_cells$cell
-write.table(output_sample,"~/cell_type/Zhou2025_test.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+#write.table(output_sample,"~/cell_type/Zhou2025_test.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+
+### major type
+meta_updated <- read.table("~/cell_type/20250418_eckerhuman_major.tsv",sep="\t")
+train <- read.table("~/cell_type/Zhou2025_sample_major.txt",sep="\t")
+left_over_cells <- meta_updated %>% filter(!cell %in% train$V1)
+output_sample <- left_over_cells$cell
+#write.table(output_sample,"~/cell_type/Zhou2025_test_major.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
 ```
 
 yame subset -l ~/cell_type/Zhou2025_test.txt /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg -o ~/tmp/20240322_SparseM/Zhou2025_test.cg
@@ -296,7 +350,7 @@ sbatch 20250205_run_model.sh
 ### load prediction result
 
 # Define directory where .rds files are stored
-prediction_dir <- "/home/fuh1/intermediate/20250422_Zhou2024/"
+prediction_dir <- "/home/fuh1/intermediate/20250429_Zhou2024/"
 # List all subset prediction RDS files
 rds_files <- list.files(prediction_dir, pattern = "subset_.*_prediction.rds$", full.names = TRUE)
 # Load all .rds files and merge them into a single dataframe
@@ -307,27 +361,14 @@ prediction_result <- do.call(rbind, lapply(rds_files, function(file) {
 
 idx <- match(rownames(prediction_result), meta_updated$cell)
 subset_cells_label <- meta_updated[idx,]
-subset_cells_label <- subset_cells_label$subtype
+subset_cells_label <- subset_cells_label$label
+
+test <- PlotF1(prediction_result,subset_cells_label)
+ggsave("~/figures/fuh1/2025428_Zhou2025_f1.pdf",width=4,height=9)
+
 PlotConfusion(prediction_result, subset_cells_label, log2 = F)
-#ggsave("~/figures/fuh1/2025423_Zhou2025_confusion.pdf",width=10,height=9.5)
+ggsave("~/figures/fuh1/2025428_Zhou2025_confusion.pdf",width=8,height=7.5)
 
-predicted_labels <- unique(prediction_result$prediction_label)
-n_labels <- length(predicted_labels)
-label_groups <- split(predicted_labels, cut(seq_along(predicted_labels), 6, labels = FALSE))
-
-for (i in 1:6) {
-  current_preds <- label_groups[[i]]
-  # Subset rows where prediction is in current group
-  idx <- which(prediction_result$prediction_label %in% current_preds)
-  # Subset predictions and actuals
-  pred_sub <- prediction_result[idx,]
-  label_sub <- subset_cells_label[idx]
-  PlotConfusion(pred_sub, label_sub, log2 = F)
-  #ggsave(paste0("~/figures/fuh1/2025423_Zhou2025_confusion",i,".pdf"),width=7,height=6.5)
-}
-
-
-              
 # Define directory where .rds files are stored
 prediction_dir <- "/home/fuh1/intermediate/20250422_Zhou2024/"
 # List all subset prediction RDS files
@@ -340,7 +381,7 @@ input_pattern <- do.call(rbind, lapply(rds_files, function(file) {
 
 umap_plot <- PlotUMAP(input_pattern,prediction_result)
 umap_plot[[1]]
-ggsave("~/figures/fuh1/20250423_Zho2025_umap.pdf",width=6.5,height=4)
+ggsave("~/figures/fuh1/20250428_Zho2025_umap.pdf",width=6.5,height=4)
 
 
 ### confidence score plot
@@ -357,7 +398,34 @@ ggplot(df, aes(x = prediction_status, y = confidence_score, fill = prediction_st
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_blank())
-ggsave("~/figures/fuh1/20250423_Zhou2025_CI.pdf",width=3,height=3)
+ggsave("~/figures/fuh1/20250429_Zhou2025_CI.pdf",width=3,height=3)
 ```
 
+### Zhu simple seq
 
+```{r}
+library(Seurat)
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2024_Zhu_SIMPLEseq_PBMC.cg",reference_pattern)
+input_pattern_mC <- input_pattern[grepl("_mC$", rownames(input_pattern)), ]
+
+Zhu_2024_Pattern.obj <- CreateSeuratObject(counts = t(input_pattern_mC[,1:1000]), assay = "DNAm")
+VariableFeatures(Zhu_2024_Pattern.obj) <- rownames(Zhu_2024_Pattern.obj[['DNAm']])
+DefaultAssay(Zhu_2024_Pattern.obj) <- "DNAm"
+Zhu_2024_Pattern.obj <- NormalizeData(Zhu_2024_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Zhu_2024_Pattern.obj <- ScaleData(Zhu_2024_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Zhu_2024_Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(Zhu_2024_Pattern.obj@assays$DNAm@layers$counts)
+
+Zhu_2024_Pattern.obj <- RunPCA(Zhu_2024_Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Zhu_2024_Pattern.obj <- FindNeighbors(Zhu_2024_Pattern.obj, reduction = "mpca", dims = 1:30)
+Zhu_2024_Pattern.obj <- FindClusters(Zhu_2024_Pattern.obj, verbose = FALSE, resolution = 0.7)
+Zhu_2024_Pattern.obj <- RunUMAP(Zhu_2024_Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+
+prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000,input_pattern_mC[,1:1000],smooth = T,KNeighbor=2)
+Zhu_2024_Pattern.obj$MethScope <- prediction_result$prediction_label
+
+n_clusters <- length(unique(Zhu_2024_Pattern.obj$MethScope))
+cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+
+p2 <- DimPlot(Zhu_2024_Pattern.obj, reduction = 'meth.umap', repel = TRUE,group.by = 'MethScope', pt.size = 0.7)  + NoGrid()
+p2

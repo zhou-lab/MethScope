@@ -11,18 +11,22 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Pattern frequency and enrichment
 
 ```{r}
+#2025_ZhouPseudo_binstring_sub
+#2025_ZhouPseudo_binstring_major
 #2025_ZhouPseudo_binstring
-reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
+#2021_LiuMajorTypePseudo_binstring
+reference_set = readLines("~/tmp/20240322_SparseM/2025_ZhouPseudo_binstring")
 #Calculate the frequency of each string
 stringFrequency <- table(reference_set)
 frequencyDF <- as.data.frame(stringFrequency)
 #Sort the data frame by frequency
 sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
 sortedFrequency$pattern <- paste0("P",seq(1:nrow(sortedFrequency)))
-count1s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == "0"))
+hypohyper <- "0"
+count1s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == hypohyper))
 one_one <- sortedFrequency[which(count1s==1),]
-idx_file <- read.table("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg.idx",sep="\t")
-row_name <- sapply(as.character(one_one$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == "0")])
+idx_file <- read.table("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg.idx",sep="\t")
+row_name <- sapply(as.character(one_one$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == hypohyper)])
 one_one$cell_type <- row_name
   
 data_visualize <- one_one
@@ -35,8 +39,8 @@ ggplot(data_visualize, aes(x=cell_type, y=Freq)) +
         axis.ticks.x=element_blank(),
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
-        axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+ggtitle("Liu 2021 Major Cell Type Hypomethylation Patterns")+labs(y="#CGs")
-ggsave("~/figures/fuh1/20250212_Liu2021_major_hypo.pdf",width=6,height=4)
+        axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+ggtitle("Zhou 2025 Cell Type Hypermethylation Patterns")+labs(y="#CGs")
+ggsave("~/figures/fuh1/20250429_Zhou2025_major_hyper.pdf",width=6,height=4)
 
 
 ```
@@ -44,6 +48,7 @@ ggsave("~/figures/fuh1/20250212_Liu2021_major_hypo.pdf",width=6,height=4)
 ### Visualize cumulative CpG along the patterns
 
 ```{r}
+#reference_set = readLines("~/tmp/20240322_SparseM/2025_ZhouPseudo_binstring")
 reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
 stringFrequency <- table(reference_set)
 frequencyDF <- as.data.frame(stringFrequency)
@@ -76,7 +81,7 @@ sortedFrequency_df$pattern_number <- 1:1000
 # }
 # sortedFrequency_df_unique <- do.call(rbind, cumulative_list)
 
-
+library(scales)
 ggplot(sortedFrequency_df, aes(x = pattern_number, y = Cumulative_Freq, group = 1, 
                color = unique,size=size)) + 
   geom_line(color = "#F1AEA7", linewidth = 1) +  # Line for cumulative trend
@@ -91,19 +96,21 @@ ggplot(sortedFrequency_df, aes(x = pattern_number, y = Cumulative_Freq, group = 
        size = "") +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        text = element_text(size = 11)) + guides(size = "none")
+        text = element_text(size = 11)) + guides(size = "none") + scale_y_continuous(breaks = pretty_breaks(n = 6))
 
 
-ggsave("~/figures/fuh1/20240206_cumulative_CGs_Liu.pdf",width=5,height=4)
+ggsave("~/figures/fuh1/20240429_cumulative_CGs_Zhou.pdf",width=5,height=4)
 
 ```
 
 ### Feature importance
 ```{r}
 Liu2021_MouseBrain_model <- Liu2021_MouseBrain_P1000
+#Zhou2025_HumanAtlas_P1000
+#Liu2021_MouseBrain_P1000
 importance_matrix <- xgb.importance(model = Liu2021_MouseBrain_model)
 num_classes <- Liu2021_MouseBrain_model$params$num_class
-num_trees <- Liu2021_MouseBrain_model$niter
+num_trees <- Liu2021_MouseBrain_model$niter*num_classes
 
 # Compute how many trees per class
 trees_per_class <- num_trees / num_classes
@@ -151,7 +158,7 @@ ggplot(top_features, aes(x = Class, y = Gain, fill = Unique)) +
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
         axis.text.x = element_text(angle = 70, vjust = 1, hjust = 1)) + scale_fill_brewer(palette = "Set2")
-ggsave("~/figures/fuh1/20250212_Liu_featureimportance.pdf",width=6,height=4)
+ggsave("~/figures/fuh1/20250429_Liu_featureimportance.pdf",width=6,height=4)
 ```
 
 ### KYCG enrichment of each pattern

@@ -4,10 +4,12 @@
 \alias{imputeRowMean}
 \title{Impute missing value for 100K window matrix}
 \usage{
-imputeRowMean(mtx)
+imputeRowMean(mtx, na_percent = 30)
 }
 \arguments{
 \item{mtx}{A cell by 100K window data frame with missing values}
+
+\item{na_percent}{A na percent threshold to be filterd (Default: 30)}
 }
 \value{
 A cell by 100K window data frame with imputed values
