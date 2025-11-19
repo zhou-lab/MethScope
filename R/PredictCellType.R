@@ -85,6 +85,8 @@ confidence_score_top95 <- function(vec){
 #' @export
 #' 
 smooth_matrix <- function(predictMatrix,KNeighbor = 5){
+  all_na_cols <- apply(predictMatrix, 2, function(x) all(is.na(x)))
+  predictMatrix[, all_na_cols] <- 1
   k <- which(is.na(predictMatrix), arr.ind=TRUE)
   predictMatrix[k] <- colMeans(predictMatrix, na.rm=TRUE)[k[,2]]
   knn_res <- FNN::get.knn(predictMatrix, k = KNeighbor)

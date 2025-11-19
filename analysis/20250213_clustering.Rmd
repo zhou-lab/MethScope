@@ -1278,14 +1278,16 @@ DimPlot(Gender_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'G
 ### Check for sex specific clustering in Loyfer
 
 ```{r}
-patterns <- "yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Loyfer2023_HumanAtlas.cm"
+#patterns <- "yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Loyfer2023_HumanAtlas.cm"
+
+patterns <- "yame unpack /home/fuh1/intermediate/20251118_Loyfer_patterns.cm"
 tbl <- read.table(text=system(patterns, intern=TRUE), header=F)
 patterns_out <- tbl$V1
 
 for (i in 1:1000){
   patterns_out_enrich <- ifelse(patterns_out == paste0("P",i),1,0)
-  write.table(patterns_out_enrich,"~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
-  text <- paste0("yame pack ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern.txt -fb ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern/",i,".cg")
+  write.table(patterns_out_enrich,"~/zhoulab/labprojects/20231112_Hongxiang/20251119_Loyfer_pattern.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- paste0("yame pack ~/zhoulab/labprojects/20231112_Hongxiang/20251119_Loyfer_pattern.txt -fb ~/zhoulab/labprojects/20231112_Hongxiang/20251119_Loyfer_pattern/",i,".cg")
   system(text)
 }
 
@@ -1327,7 +1329,7 @@ meta_excel <- meta_excel[match(rownames(input_pattern_filter),meta_excel$Sample_
 Loyfer_Pattern.obj$sex <- meta_excel$Sex
 
 DimPlot(Loyfer_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'sex', cols = cols, pt.size = 1)  + NoGrid()+theme(legend.position = "top")+ggtitle("")
-ggsave("~/figures/fuh1/20251118_LoyferSex.pdf",width=3,height=3.5)
+#ggsave("~/figures/fuh1/20251118_LoyferSex.pdf",width=3,height=3.5)
 
 ### Plot some of the MRMP levels
 
@@ -1379,7 +1381,7 @@ chrx <- test %>% filter(Mask == "chrX")
 ```
 
 /mnt/isilon/zhoulab/labbin/yamedev2 rowop /home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg -o binstring -b 0.2 > ~/intermediate/20251118_Loyfer_binstring
-Rscript ./GenerateReference.R ~/intermediate/20251118_Loyfer_binstring
+Rscript ./GenerateReference.R ~/intermediate/20251118_Loyfer_binstring 200
 yame pack -f s patterns.txt ~/intermediate/20251118_Loyfer_patterns.cm
 
 ```{r}
