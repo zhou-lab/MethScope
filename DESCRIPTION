@@ -1,9 +1,11 @@
 Package: MethScope
-Title: Supervised learning to annotate cell type
-Version: 0.0.0.9000
-Authors@R: 
-    person("Hongxiang", "Fu", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Title: Ultra-fast Analysis of Sparse DNA Methylome via Recurrent Pattern Encoding
+Version: 1.0.0
+Authors@R: c(
+    person("Hongxiang", "Fu", , "fhx@seas.upenn.edu", role = c("aut", "cre"),comment = c(ORCID = "0000-0002-9873-8606"))
+    person("Wanding", "Zhou", , "wanding.zhou@pennmedicine.upenn.edu", role = c("aut", "cre"))
+    )
+Description: MethScope identifies Most Recurrent Methylation Patterns (MRMPs).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -23,3 +25,7 @@ Imports:
   FNN,
   data.table,
   nnls
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

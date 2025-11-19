@@ -2,3 +2,8 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^analysis/
+^doc$
+^Meta$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

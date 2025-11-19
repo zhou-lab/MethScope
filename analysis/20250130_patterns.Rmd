@@ -11,8 +11,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Pattern frequency and enrichment
 
 ```{r}
-#2025_ZhouPseudo_binstring_sub
-#2025_ZhouPseudo_binstring_major
 #2025_ZhouPseudo_binstring
 #2021_LiuMajorTypePseudo_binstring
 reference_set = readLines("~/tmp/20240322_SparseM/2025_ZhouPseudo_binstring")
@@ -21,11 +19,14 @@ stringFrequency <- table(reference_set)
 frequencyDF <- as.data.frame(stringFrequency)
 #Sort the data frame by frequency
 sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
-sortedFrequency$pattern <- paste0("P",seq(1:nrow(sortedFrequency)))
+sortedFrequency$pattern <- paste0("P",seq(1:(nrow(sortedFrequency))))
+# sortedFrequency$pattern <- paste0("P",seq(1:(nrow(sortedFrequency)))-1)
+# sortedFrequency$pattern <- ifelse(sortedFrequency$pattern == "P0","Pna",sortedFrequency$pattern)
 hypohyper <- "0"
 count1s <- sapply(as.character(sortedFrequency$reference_set),function(x)sum(strsplit(x, NULL)[[1]] == hypohyper))
 one_one <- sortedFrequency[which(count1s==1),]
 idx_file <- read.table("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg.idx",sep="\t")
+#idx_file <- read.table("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg.idx",sep="\t")
 row_name <- sapply(as.character(one_one$reference_set),function(x)idx_file$V1[which(strsplit(x, NULL)[[1]] == hypohyper)])
 one_one$cell_type <- row_name
   
@@ -40,20 +41,26 @@ ggplot(data_visualize, aes(x=cell_type, y=Freq)) +
         panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+ggtitle("Zhou 2025 Cell Type Hypermethylation Patterns")+labs(y="#CGs")
-ggsave("~/figures/fuh1/20250429_Zhou2025_major_hyper.pdf",width=6,height=4)
-
+#ggsave("~/figures/fuh1/20250724_Zhou2025_major_hyper.pdf",width=6,height=4)
 
 ```
+
+
 
 ### Visualize cumulative CpG along the patterns
 
 ```{r}
-#reference_set = readLines("~/tmp/20240322_SparseM/2025_ZhouPseudo_binstring")
-reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
+reference_set = readLines("~/tmp/20240322_SparseM/2025_ZhouPseudo_binstring_filter")
+#reference_set = readLines("~/tmp/20240322_SparseM/2021_LiuMajorTypePseudo_binstring")
 stringFrequency <- table(reference_set)
 frequencyDF <- as.data.frame(stringFrequency)
 sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
-sortedFrequency$pattern <- paste0("P",seq(1:nrow(sortedFrequency)))
+sortedFrequency$pattern <- paste0("P",seq(1:(nrow(sortedFrequency))))
+# sortedFrequency$pattern <- paste0("P",seq(1:(nrow(sortedFrequency)))-1)
+# sortedFrequency$pattern <- ifelse(sortedFrequency$pattern == "P0","Pna",sortedFrequency$pattern)
+sortedFrequency[which(sortedFrequency$Freq <= 70),]$pattern <- "Pna"
+### remove NA patterns
+sortedFrequency <- sortedFrequency[-which(sortedFrequency$pattern == "Pna"),]
 
 sortedFrequency$Cumulative_Freq = cumsum(sortedFrequency$Freq)
 sortedFrequency_df <- sortedFrequency[1:1000,]
@@ -67,6 +74,14 @@ sortedFrequency_df$unique[which(count0s==1)] <- "Unique hypomethylated"
 
 sortedFrequency_df$size <- ifelse(sortedFrequency_df$unique == "Not unique",0,1)
 sortedFrequency_df$pattern_number <- 1:1000
+
+### for saving the supplementary table
+one_one_zero <- rbind(one_zero,one_one)
+merged_df <- merge(sortedFrequency_df, one_one_zero[, c("pattern", "cell_type")], by = "pattern", all.x = TRUE)
+merged_df <- merged_df[order(merged_df$Cumulative_Freq,decreasing = F),]
+merged_df <- merged_df %>% select(-size,-pattern_number)
+#library(openxlsx)
+#write.xlsx(merged_df, file = "~/cell_type/Supplementary_Table1.xlsx")
 
 # cumulative_list <- list()
 # unique_classes <- unique(sortedFrequency_df$unique)
@@ -85,8 +100,9 @@ library(scales)
 ggplot(sortedFrequency_df, aes(x = pattern_number, y = Cumulative_Freq, group = 1, 
                color = unique,size=size)) + 
   geom_line(color = "#F1AEA7", linewidth = 1) +  # Line for cumulative trend
+  geom_hline(yintercept = 21867837, linetype = "dashed", color = "black") +
   geom_point(alpha = 1) + # Points with color and size mapping
-  scale_y_log10() +                       # Log10 scale for y-axis
+  scale_y_log10(breaks = pretty_breaks(n = 6)) +  # Log10 scale for y-axis
   scale_color_manual(values = c("#A6DAEF", "#FDD379", "#B0D9A5")) +  # Set distinct colors
   scale_size_continuous(range = c(1.5, 2)) + # Adjust point size scale
   labs(title = "", 
@@ -96,11 +112,27 @@ ggplot(sortedFrequency_df, aes(x = pattern_number, y = Cumulative_Freq, group = 
        size = "") +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        text = element_text(size = 11)) + guides(size = "none") + scale_y_continuous(breaks = pretty_breaks(n = 6))
+        text = element_text(size = 11)) + guides(size = "none") 
 
 
-ggsave("~/figures/fuh1/20240429_cumulative_CGs_Zhou.pdf",width=5,height=4)
+ggsave("~/figures/fuh1/20250724_cumulative_CGs_Zhou.pdf",width=5,height=4)
 
+
+library(scales)
+ggplot(sortedFrequency_df, aes(x = pattern_number, y = Freq,fill = unique)) + 
+  geom_bar(stat = "identity") + # Points with color and size mapping
+  scale_y_log10() + 
+  scale_fill_manual(values = c("#A6DAEF", "#FDD379", "#B0D9A5")) +  # Set distinct colors
+  labs(title = "", 
+       x = "Pattern", 
+       y = "CpG #", 
+       fill = "") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        text = element_text(size = 11),panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
+
+ggsave("~/figures/fuh1/20240724_individual_CGs_Zhou.pdf",width=5,height=4)
 ```
 
 ### Feature importance
@@ -247,13 +279,101 @@ ggsave("~/figures/fuh1/20250130_CA3Liu_hypo.pdf",width=6,height=5)
 
 ```
 
+### Pattern average methylation levels
+
+```{r}
+library(ComplexHeatmap)
+library(circlize)
+library(readxl)
+
+Liu_train <- readRDS("~/tmp/20240322_SparseM/20240322_Liu_training.RDS")
+rownames(Liu_train) <- Liu_train$Query
+Liu_train <- Liu_train %>% select(-Query)
+celltype <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
+
+Liu_train <- readRDS("/home/fuh1/intermediate/20250507_Zhou2025_training_model_input.rds")
+celltype <- read.table("~/cell_type/20250425_eckerhuman.tsv",sep="\t")
+
+Liu_train <- Liu_train[,top_features$Feature]
+
+celltype_train <- celltype$MajorType[match(rownames(Liu_train),celltype$SampleID)]
+#celltype_train <- celltype$label[match(rownames(Liu_train),celltype$cell)]
+expr_mat <- as.matrix(t(Liu_train))
+expr_mat <- apply(expr_mat, 2, as.numeric)
+expr_mat <- as.matrix(expr_mat)  # ensure it's matrix again
+rownames(expr_mat) <- colnames(Liu_train)
+
+names(celltype_train) <- colnames(expr_mat)
+cell_type_colors <- structure(
+  circlize::rand_color(length(unique(celltype_train))),
+  names = unique(celltype_train)
+)
+
+# Create annotation
+col_ha <- HeatmapAnnotation(
+  CellType = celltype_train,
+  col = list(CellType = cell_type_colors),
+  show_annotation_name = FALSE,
+  show_legend = FALSE 
+)
+col_fun <- colorRamp2(
+  c(0, 50, 100),  
+  #c("#7F9FCF", "white", "#F08060") 
+  c("#3B4CC0", "white", "#B40426")
+  #c("#30123B", "#B4EC51", "#FCFFA4")
+  #c("#352A87", "#5DC863", "#FDE725")
+)
+
+row_labels <- rownames(expr_mat)
+row_numbers <- as.numeric(gsub("P([0-9]+).*", "\\1", row_labels))
+expr_mat <- expr_mat[order(row_numbers), ]
+expr_mat <- expr_mat*100
+legend_order <- as.character(top_features$Class)
+cell_type_colors_ordered <- cell_type_colors[legend_order]
+
+desired_order <- top_features$Feature
+expr_mat <- expr_mat[match(desired_order, rownames(expr_mat)), , drop = FALSE]
+  
+pdf("~/figures/fuh1/20250625_Liu_pattern_train.pdf",width=10,height=8)
+ht <- Heatmap(
+  expr_mat,
+  name = "Level (%)",
+  col = col_fun,
+  top_annotation = col_ha,
+  show_column_names = FALSE,
+  show_row_names = TRUE,
+  cluster_columns = FALSE,
+  cluster_rows = FALSE,
+  column_split = celltype_train,
+  column_title = NULL,
+  na_col = "white"
+)
+
+draw(
+  ht,
+  annotation_legend_side = "right",
+  annotation_legend_list = list(
+    Legend(
+      labels = names(cell_type_colors_ordered),
+      legend_gp = gpar(fill = cell_type_colors_ordered),
+      title = "",
+      ncol = 2  # Multi-column legend
+    )
+  )
+)
+dev.off()
+
+```
+
+
 ### KYCG enrichment pattern of TFBS
 
 ```{r}
-pattern_list <- top_features %>% filter(Unique == "Unique hypomethylated")
-pattern_list_enrich <- pattern_list$Feature
+# pattern_list <- top_features %>% filter(Unique == "Unique hypomethylated")
+# pattern_list_enrich <- pattern_list$Feature
 
-sortedFrequency[which(sortedFrequency$Freq <= 50),]$pattern <- "Pna"
+pattern_list_enrich <- one_one$pattern 
+sortedFrequency[which(sortedFrequency$Freq <= 70),]$pattern <- "Pna"
 patterns_out <- sortedFrequency$pattern[match(reference_set, sortedFrequency$reference_set)]
 patterns_out_enrich_full <- c()
 for (i in 1:length(pattern_list_enrich)){
@@ -262,23 +382,25 @@ for (i in 1:length(pattern_list_enrich)){
 }
 
 for (i in 1:ncol(patterns_out_enrich_full)){
-  write.table(patterns_out_enrich_full[,i],"~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
-  text <- paste0("yame pack ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern.txt -fb ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern/",i,".cg")
+  write.table(patterns_out_enrich_full[,i],"~/zhoulab/labprojects/20231112_Hongxiang/20250828_Zhou_pattern.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- paste0("yame pack ~/zhoulab/labprojects/20231112_Hongxiang/20250828_Zhou_pattern.txt -fb ~/zhoulab/labprojects/20231112_Hongxiang/20250828_Zhou_pattern/",i,".cg")
   system(text)
 }
-# mergeCG2 ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern/ ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern.cg
-# yame summary -m /home/fuh1/references/mm10/KYCGKB_mm10/TFBSrm.20221005.cm ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern_TFBS
+# mergeCG2 ~/zhoulab/labprojects/20231112_Hongxiang/20250828_Zhou_pattern/ ~/zhoulab/labprojects/20231112_Hongxiang/20250828_Zhou_pattern.cg
+# yame summary -m /home/fuh1/references/hg38/KYCGKB_hg38/TFBSrm.20221005.cm ~/zhoulab/labprojects/20231112_Hongxiang/20250828_Zhou_pattern.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20250828_Zhou_pattern_TFBS
+# yame summary -m /home/fuh1/references/hg38/KYCGKB_hg38/GeneLinksEnh.20241127.cm ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Zhou_pattern.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20250409_Zhou_pattern_Gene
 
 library(dplyr)
 library(tidyr)
-TFBS_result <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20250409_Liu_pattern_TFBS",header=T)
+TFBS_result <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20250409_Zhou_pattern_TFBS",header=T)
 TFBS_result$Log2OddsRatio <- as.numeric(TFBS_result$Log2OddsRatio)
-# Step 1: Identify top 5 masks globally based on average Log2OddsRatio
+# Step 1: Identify top 2 masks globally based on average Log2OddsRatio
 top_masks <- TFBS_result %>%
   group_by(Query) %>%
   arrange(Query, dplyr::desc(Log2OddsRatio)) %>%   # Use explicit namespace
-  slice_head(n = 2) %>%
+  slice_head(n = 3) %>%
   select(Query,Mask)
+top_masks <- top_masks[!grepl("^ZNF", top_masks$Mask), ]
 
 # Step 2: Filter original data to include only those top 5 masks
 filtered_df <- TFBS_result %>%
@@ -292,10 +414,15 @@ matrix_df <- filtered_df %>%
 matrix_df <- as.data.frame(matrix_df)
 rownames(matrix_df) <- paste0(pattern_list_enrich[matrix_df$Query]," (", pattern_list$Class[matrix_df$Query], ")")
 matrix_df <- matrix_df[,-1]
+
 df_matrix_clean <- matrix_df
 df_matrix_clean[df_matrix_clean == -Inf] <- NA
-df_zscore <- as.data.frame(scale(df_matrix_clean, center = TRUE, scale = TRUE))
+#df_zscore <- as.data.frame(scale(df_matrix_clean, center = TRUE, scale = TRUE))
+df_zscore <- as.data.frame(t(scale(t(df_matrix_clean), center = TRUE, scale = TRUE)))
 
+row_labels <- rownames(df_zscore)
+row_numbers <- as.numeric(gsub("P([0-9]+).*", "\\1", row_labels))
+df_ordered <- df_zscore[order(row_numbers), ]
 
 df_zscore$Query <- rownames(df_zscore)
 df_long <- df_zscore %>%
@@ -305,6 +432,7 @@ df_long <- df_zscore %>%
     values_to = "Zscore"
   )
 
+df_long$Query <- factor(df_long$Query,levels=rownames(df_ordered))
 ggplot(df_long, aes(x = Mask, y = Query, fill = Zscore)) +
   geom_tile(color = "white") +
   scale_fill_viridis_c(option = "viridis", na.value = "white") +
@@ -318,23 +446,185 @@ ggplot(df_long, aes(x = Mask, y = Query, fill = Zscore)) +
     y = "",
     fill = "Z-score"
   )
-ggsave("~/figures/fuh1/20250409_TFBS_liu.pdf",width=7,height=5)
-```
+ggsave("~/figures/fuh1/20250506_TFBS_Zhou.pdf",width=7,height=5)
 
+### gene links 
+
+library(dplyr)
+library(tidyr)
+TFBS_result <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20250409_Zhou_pattern_Gene",header=T)
+TFBS_result$Log2OddsRatio <- as.numeric(TFBS_result$Log2OddsRatio)
+
+TFBS_result <- TFBS_result %>% filter(N_mask > 20 & N_overlap > 3)
+TFBS_result <- TFBS_result %>% filter(!is.na(Mask))
+p_value_data <- as.data.frame(TFBS_result)[,c(7,6,8,5)]
+p_values <- apply(p_value_data,1,function(x){testEnrichmentFisherN(as.numeric(x[1]),as.numeric(x[2]),as.numeric(x[3]),as.numeric(x[4]))$p.value})
+p_values <- p.adjust(p_values,method="fdr")
+TFBS_result$p_values <- p_values
+# Step 1: Identify top 2 masks globally based on average Log2OddsRatio
+top_masks <- TFBS_result %>%
+  group_by(Query) %>%
+  arrange(Query, p_values) %>%   # Use explicit namespace
+  slice_head(n = 3) %>%
+  select(Query,Mask)
+top_masks <- top_masks[!grepl("^ZNF", top_masks$Mask), ]
+
+# Step 2: Filter original data to include only those top 5 masks
+filtered_df <- TFBS_result %>%
+  filter(Mask %in% top_masks$Mask)
+
+# Step 3: Transform to wide matrix (Query × Mask)
+matrix_df <- filtered_df %>%
+  select(Query, Mask, Log2OddsRatio) %>%
+  pivot_wider(names_from = Mask, values_from = Log2OddsRatio)
+
+matrix_df <- as.data.frame(matrix_df)
+rownames(matrix_df) <- paste0(pattern_list_enrich[matrix_df$Query]," (", pattern_list$Class[matrix_df$Query], ")")
+matrix_df <- matrix_df[,-1]
+
+df_matrix_clean <- matrix_df
+df_matrix_clean[df_matrix_clean == -Inf] <- NA
+#df_zscore <- as.data.frame(scale(df_matrix_clean, center = TRUE, scale = TRUE))
+df_zscore <- as.data.frame(t(scale(t(df_matrix_clean), center = TRUE, scale = TRUE)))
+
+row_labels <- rownames(df_zscore)
+row_numbers <- as.numeric(gsub("P([0-9]+).*", "\\1", row_labels))
+df_ordered <- df_zscore[order(row_numbers), ]
+
+df_zscore$Query <- rownames(df_zscore)
+df_long <- df_zscore %>%
+  pivot_longer(
+    -Query,
+    names_to = "Mask",
+    values_to = "Zscore"
+  )
+
+df_long$Query <- factor(df_long$Query,levels=rownames(df_ordered))
+ggplot(df_long, aes(x = Mask, y = Query, fill = Zscore)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "viridis", na.value = "white") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
+  ) +
+  labs(
+    x = "Transcription Factor Binding Sites",
+    y = "",
+    fill = "Z-score"
+  )
+ggsave("~/figures/fuh1/20250506_TFBS_Zhou.pdf",width=7,height=5)
+
+### manhattan plot 
+
+library(dplyr)
+library(tidyr)
+TFBS_result <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20250828_Zhou_pattern_TFBS",header=T)
+TFBS_result$Log2OddsRatio <- as.numeric(TFBS_result$Log2OddsRatio)
+p_value_data <- as.data.frame(TFBS_result)[,c(7,6,8,5)]
+p_values <- apply(p_value_data,1,function(x){testEnrichmentFisherN(as.numeric(x[1]),as.numeric(x[2]),as.numeric(x[3]),as.numeric(x[4]))$p.value})
+TFBS_result$P.value <- p.adjust(p_values,method="fdr")
+#TFBS_result$P.value <- p_values
+TFBS_result <- TFBS_result %>% filter(P.value < 0.05)
+TFBS_result$expected <- (TFBS_result$N_query * TFBS_result$N_mask) / TFBS_result$N_univ
+TFBS_result$fold_enrichment <- TFBS_result$N_overlap / TFBS_result$expected
+
+#TFBS_result <- TFBS_result %>% filter(N_overlap > 6)
+
+matrix_df <- as.data.frame(TFBS_result) %>%
+  select(Query, Mask, Log2OddsRatio) %>%
+  pivot_wider(names_from = Mask, values_from = Log2OddsRatio)
+
+matrix_df <- as.data.frame(matrix_df)
+rownames(matrix_df) <- paste0(pattern_list_enrich[matrix_df$Query]," (", one_one$cell_type[matrix_df$Query], ")")
+matrix_df <- matrix_df[,-1]
+
+### manhattan plot
+
+library(tidyverse)
+
+df_matrix_clean <- matrix_df
+df_matrix_clean[df_matrix_clean == -Inf] <- NA
+df_zscore <- as.data.frame(t(scale(t(df_matrix_clean), center = TRUE, scale = TRUE)))
+
+mat <- df_zscore
+long <- mat %>%
+  rownames_to_column("cell_type") %>%
+  pivot_longer(-cell_type, names_to = "feature", values_to = "log2_or") %>%
+  mutate(
+    # remove -Inf/+Inf
+    log2_or = replace(log2_or, is.infinite(log2_or), NA_real_)
+  ) %>%
+  drop_na(log2_or)
+
+# keep the original row order on the x-axis
+long <- long %>% mutate(cell_type = factor(cell_type, levels = unique(cell_type)))
+
+# optional: alternating light background bands (Manhattan vibe)
+bands <- tibble(
+  i = seq_len(nlevels(long$cell_type)),
+  xmin = i - 0.5,
+  xmax = i + 0.5
+) %>% filter(i %% 2 == 0)
+
+long <- long %>%
+  mutate(
+    P_num = as.numeric(str_extract(cell_type, "(?<=P)\\d+")),  
+    cell_type = fct_reorder(cell_type, P_num)                  
+  )
+
+top_terms <- long %>%
+  group_by(cell_type) %>%
+  slice_max(order_by = log2_or, n = 1, with_ties = FALSE)
+library(ggrepel)
+ggplot(long, aes(x = cell_type, y = log2_or)) +
+  geom_rect(
+    data = bands, inherit.aes = FALSE,
+    aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf),
+    fill = "grey95", color = NA
+  ) +
+  geom_point(
+    position = position_jitter(width = 0.25, height = 0),
+    size = 1.5, alpha = 0.7
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed",color="red") +
+  geom_text_repel(
+    data = top_terms,
+    aes(label = feature),  # replace with the column you want as label (maybe "feature")
+    nudge_y = 0.55,
+    size = 3,
+    max.overlaps = Inf,
+    color = "blue"
+  ) +
+  labs(x = "", y = "Z-Score") +
+  theme_bw(base_size = 11) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+ggsave("~/figures/fuh1/20250902_Zhou_TFBS.pdf",width=9,height=4)
+```
 
 ### Sparsity levels across different datasets
 ```{r}
 suppressMessages(library(readr))
-df1 = read_tsv("~/zhou_lab/projects/20230531_Spatial_methseq/features/SpMETSLE14DM/ChromHMM.20220414_new") %>% dplyr::filter(!is.na(Mask)) 
+df1 = read_tsv("~/zhou_lab/projects/20230531_Spatial_methseq/features/SpMETSLHLN4D/ChromHMM.20220303.txt.gz") %>% dplyr::filter(!is.na(Mask)) 
 df2 = read_tsv("~/zhou_lab/projects/20230531_Spatial_methseq/features/SpMETSLB14DM/ChromHMM.20220414_new") %>% dplyr::filter(!is.na(Mask))
 df0 = read_tsv("~/zhoulab/labprojects/20210610_zhouw3/20230804_public_mm10_chromHMM_merged.tsv.gz") %>% dplyr::filter(!is.na(Mask))
+df3 <- read.table("~/intermediate/20250506_zhou_summary.txt",header = T)
+df4 <- read.table("~/intermediate/20250707_Fab_summary.txt",header = T)
 df0$File = gsub("_mm10","",df0$File)
-df1$File = "Spatial E11 Embryo (50 \u03BCm)"
+df1$File = "Spatial Lymph Node (50 \u03BCm)"
+df1$Query <- df1$QFile
+df1$QFile <- "SpMETSLHLN4D.cg"
 df2$File = "Spatial P21 Brain (20 \u03BCm)"
-df0 = bind_rows(df0,df1,df2)
+df3$File = "2025_Zhou"
+df4$File = "2023_Fabyanic"
+df0 = bind_rows(df0,df1,df2,df3,df4)
 df0 = df0 %>% dplyr::select(File, QFile, N_query) %>% unique
 
-grDevices::cairo_pdf("~/figures/fuh1/SparseInfer/202401007_NCG_covered.pdf",width=5, height=5)
+grDevices::cairo_pdf("~/figures/fuh1/SparseInfer/20250707_NCG_covered.pdf",width=5, height=5)
 ggplot(df0) + geom_hline(yintercept=21000000) + geom_hline(yintercept=21000000*0.1, lty="dashed") + geom_hline(yintercept=21000000*0.01, lty="dotted") + scale_y_continuous(trans="log10") + geom_violin(aes(File, N_query, fill = File),trim=TRUE) + ylab("#CpGs covered") + xlab("") + theme_bw()+ theme(
   panel.grid.major = element_blank(), 
   panel.grid.minor = element_blank(),
@@ -465,3 +755,289 @@ dev.off()
 ```
 
 
+### Check Pattern interchrom pairs and distance
+
+```{r}
+### human 
+cpg_anno <- read.table("/mnt/isilon/zhou_lab/projects/20191221_references/hg38/annotation/cpg/cpg_nocontig.bed.gz")
+Pattern_annotation <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Zhou2025_HumanAtlas.cm", intern=TRUE), header=F)
+
+df <- Pattern_annotation
+df_clean <- df[df$V1 != "Pna", , drop = FALSE]
+matches <- df_clean$V1[-1] == df_clean$V1[-nrow(df_clean)]
+prop <- mean(matches)
+
+
+### mouse
+cpg_anno <- read.table("/mnt/isilon/zhou_lab/projects/20191221_references/mm10/annotation/cpg/cpg_nocontig.bed.gz")
+Pattern_annotation <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Liu2021_MouseBrain.cm", intern=TRUE), header=F)
+  
+idx <- grep("^P[0-9]+$", Pattern_annotation[,1])
+#idx <- idx[as.numeric(sub("P", "", Pattern_annotation[idx,1])) <= 1000]
+
+cpg_anno <- cpg_anno[idx,]
+Pattern_annotation <- Pattern_annotation[idx,]
+
+Pattern_aggregation <- cbind(cpg_anno,Pattern_annotation)
+Pattern_aggregation <- Pattern_aggregation %>% filter(V1 != "chrM")
+colnames(Pattern_aggregation)[4] <- "annotation" 
+chr_coverage <- as.data.frame(Pattern_aggregation) %>%
+  distinct(annotation, V1) %>%
+  dplyr::count(annotation, name = "n_chromosomes")
+ggplot(chr_coverage, aes(x = n_chromosomes)) +
+  geom_density(fill = "black", alpha = 0.5) +
+  labs(
+    title = "",
+    x = "Number of Chromosomes Covered",
+    y = "Density"
+  ) +
+  theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     axis.title.x = element_text(size = 11),
+                     axis.title.y = element_text(size = 11)) 
+#ggsave("~/figures/fuh1/20250815_chromcovered_liu.pdf",width=3,height=3)
+
+
+max_by_chr <- Pattern_aggregation %>%
+  group_by(annotation, V1) %>%
+  dplyr::summarise(
+    max_start = max(V2),                     # matches your example (e.g., 10000 & 50000 -> 50000)
+    max_end   = max(V3),                     # max end coordinate
+    span_minmax = max(V3) - min(V2),         # full span covered on that chr
+    start_range = max(V2) - min(V2),         # range of start sites
+    .groups = "drop"
+  )
+max_by_chr_top1000 <- max_by_chr %>%
+  filter(grepl("^P\\d+$", annotation)) %>%                  # keep only P + digits
+  filter(as.integer(sub("^P", "", annotation)) <= 1000)     # numeric part ≤ 1000
+### check VMR 
+#meth_mtx <- read.csv("/home/fuh1/tmp/20240227_test_scbs/Nichols_2022_matrix/mean_shrunken_residuals.csv.gz", row.names=1) %>% as.matrix()
+meth_mtx <- read.csv("/home/fuh1/tmp/20240227_test_scbs/2023_Fabyanic_matrix_5mc/mean_shrunken_residuals.csv.gz", row.names=1) %>% as.matrix()
+
+nm <- colnames(meth_mtx)
+parts <- strsplit(nm, "\\.")
+
+# Keep only well-formed names with exactly 3 fields and numeric start/end
+ok <- lengths(parts) == 3 & sapply(parts, function(p) all(grepl("^\\d+$", p[2:3])))
+
+# Compute distances; keep names
+col_distances <- setNames(rep(NA_real_, length(nm)), nm)
+col_distances[ok] <- mapply(function(p) as.numeric(p[3]) - as.numeric(p[2]), parts[ok])
+
+VMR_distance <- col_distances
+MethScope_distance <- max_by_chr_top1000$start_range
+
+df <- data.frame(
+  distance = c(VMR_distance, MethScope_distance),
+  group = rep(c("VMR", "MethScope"), times = c(length(VMR_distance), length(MethScope_distance)))
+)
+
+ggplot(df, aes(x = distance, fill = group)) +
+  geom_density(alpha = 0.3) +
+  scale_x_log10() +  # optional, useful if distances span orders of magnitude
+  theme_bw() + labs(x = "Distance (bp)",fill="",y="Density")+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+                     axis.title.x = element_text(size = 11),
+                     axis.title.y = element_text(size = 11),
+                      legend.position = c(0.97, 0.99),
+    legend.justification = c("right", "top")) 
+ggsave("~/figures/fuh1/20250815_wuhao_distance.pdf",width=3,height=3)
+```
+
+### Check for graph clustering
+
+```{r}
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
+
+library(igraph)
+reference_input <- reference_input %>% select(-Pna)
+S  <- cor(reference_input_imputed, use = "pairwise.complete.obs", method = "pearson") 
+diag(S) <- 0                               # avoid self-loops
+# If you prefer Euclidean similarity:
+# D  <- as.matrix(dist(t(M)))              # distance between columns
+# S  <- 1/(1 + D)                          # convert to [0,1]-ish similarity
+
+# =============================
+# A) k-nearest neighbor (kNN) graph
+# =============================
+k <- 3   # each node connects to its k most similar neighbors
+knn_edges <- do.call(
+  rbind,
+  lapply(seq_len(ncol(S)), function(i){
+    nbrs <- order(S[i, ], decreasing = TRUE)[1:k]
+    data.frame(from = colnames(S)[i], to = colnames(S)[nbrs], weight = S[i, nbrs])
+  })
+)
+# Make it undirected by keeping the max weight for each pair
+knn_edges2 <- aggregate(weight ~ apply(cbind(from, to), 1, function(x) paste(sort(x), collapse = "||")),
+                        data = transform(knn_edges, key = paste(pmin(from,to), pmax(from,to), sep="||")),
+                        FUN = max)
+tmp <- do.call(rbind, strsplit(knn_edges2$`apply(cbind(from, to), 1, function(x) paste(sort(x), collapse = "||"))`, "\\|\\|"))
+E_knn <- data.frame(from = tmp[,1], to = tmp[,2], weight = knn_edges2$weight)
+
+g_knn <- graph_from_data_frame(E_knn, directed = FALSE)
+# Plot (basic)
+plot(g_knn,
+     vertex.label = V(g_knn)$name,
+     edge.width = 2*E(g_knn)$weight,
+     edge.color = "grey40",
+     vertex.size = 18)
+
+tau <- 0.9  # keep edges with correlation >= tau
+# build edge list from upper triangle
+up <- which(S >= tau & upper.tri(S), arr.ind = TRUE)
+E_thr <- data.frame(
+  from = colnames(S)[up[,1]],
+  to   = colnames(S)[up[,2]],
+  weight = S[up]
+)
+g_thr <- graph_from_data_frame(E_thr, directed = FALSE)
+plot(g_thr,
+     vertex.label = NA,
+     edge.width = 2*E(g_thr)$weight,
+     edge.color = "grey40",
+     vertex.size = 4)
+```
+
+### check pattern overlap
+
+```{r}
+library(data.table)
+A <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Zhou2025_HumanAtlas.cm", intern=TRUE), header=F)
+B <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Loyfer2023_HumanAtlas.cm", intern=TRUE), header=F)
+DT <- data.table(A=A, B=B)
+setnames(DT, c("A.V1","B.V1"), c("A","B"))
+DT_filtered <- DT[A != "Pna" & B != "Pna"]
+
+# library(aricode)
+# nmi_score <- NMI(DT$A,DT$B)
+# DT_filtered <- DT_filtered[A != "P1" & A != "P2" & B != "P1" & B != "P2"]
+# DT_filtered <- DT_filtered[
+#   grepl("^P\\d+$", A) & grepl("^P\\d+$", B) &
+#   as.integer(sub("P", "", A)) <= 100 &
+#   as.integer(sub("P", "", B)) <= 100
+# ]
+
+
+tabs <- DT_filtered[, .N, by = .(A, B)]
+ai <- tabs[, .(ai = sum(N)), by = A]
+bj <- tabs[, .(bj = sum(N)), by = B]
+n  <- tabs[, sum(N)]
+
+comb2 <- function(x) x*(x-1)/2
+sum_nij2 <- tabs[, sum(comb2(N))]
+sum_ai2  <- ai[, sum(comb2(ai))]
+sum_bj2  <- bj[, sum(comb2(bj))]
+total2   <- comb2(n)
+
+expected_index <- (sum_ai2 * sum_bj2) / total2
+max_index <- 0.5*(sum_ai2 + sum_bj2)
+ARI <- (sum_nij2 - expected_index) / (max_index - expected_index)
+
+p1 <- ggplot(data.frame(Metric = "Adjusted Rand Index", Value = ari),
+             aes(Metric, Value)) +
+  geom_col() +
+  coord_cartesian(ylim = c(0, 0.5)) +
+  theme_minimal(base_size = 10) +
+  labs(
+    title = "",
+    x = sprintf("A = %s, B = %s", format(kA, big.mark=","), format(kB, big.mark=",")), y = "Adjusted Rand Index"
+  ) + theme(axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            panel.grid.major = element_blank())
+p1
+ggsave("~/figures/fuh1/20251002_ARI.pdf",width=2.5,height=3)
+
+
+set.seed(1)
+subset_n <- min(5e7L, nrow(DT_filtered))  
+idx <- sample.int(nrow(DT_filtered), subset_n)
+DTs <- DT_filtered[idx, .(A, B)]
+
+# --- Helpers ---
+comb2 <- function(x) x * (x - 1) / 2
+
+compute_ari <- function(D){          # D: data.table with A,B
+  tabs <- D[, .N, by = .(A,B)]
+  ai <- tabs[, .(ai = sum(N)), by = A]
+  bj <- tabs[, .(bj = sum(N)), by = B]
+  n  <- tabs[, sum(N)]
+  s_nij2 <- tabs[, sum(comb2(N))]
+  s_ai2  <- ai[,   sum(comb2(ai))]
+  s_bj2  <- bj[,   sum(comb2(bj))]
+  tot2   <- comb2(n)
+
+  exp_idx <- if (tot2 > 0) (s_ai2 * s_bj2) / tot2 else 0
+  max_idx <- 0.5 * (s_ai2 + s_bj2)
+  if ((max_idx - exp_idx) != 0) (s_nij2 - exp_idx) / (max_idx - exp_idx) else 0
+}
+
+# --- Observed ARI on subset ---
+ari_obs <- compute_ari(DTs)
+
+# --- Permutation null (preserve marginals; break association) ---
+K <- 1000  # number of permutations (50–200 typical)
+ari_null <- numeric(K)
+for(k in seq_len(K)){
+  DTperm <- copy(DTs)
+  DTperm[, B := sample(B)]          # in-place shuffle
+  ari_null[k] <- compute_ari(DTperm)
+}
+
+# --- Empirical p-value & effect size ---
+p_emp <- (sum(ari_null >= ari_obs) + 1) / (K + 1)
+mu0   <- mean(ari_null); sd0 <- sd(ari_null)
+z_sc  <- if (sd0 > 0) (ari_obs - mu0) / sd0 else Inf
+
+# --- Plot: null histogram + observed ARI line ---
+df <- data.frame(ARI = ari_null)
+p <- ggplot(df, aes(ARI)) +
+  geom_histogram(bins = 30, linewidth = 0.3) +
+  geom_vline(xintercept = ari_obs, linewidth = 1) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    title = "ARI vs permutation null",
+    subtitle = sprintf("Observed ARI = %.3f | p≈%.4f | groups: A=%s, B=%s",
+                       ari_obs, p_emp,length(unique(DTs$A)), length(unique(DTs$B))),
+    x = "ARI under null", y = "Count"
+  )
+
+p
+
+
+ggplot(data.frame(ARI = ari_null), aes(ARI)) +
+  stat_ecdf(geom = "step", color = "grey40", linewidth = 1) +
+  geom_vline(xintercept = ari_obs, color = "steelblue", linewidth = 1) +
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Empirical CDF of ARI under permutation null",
+    x = "ARI (permute B)",
+    y = "Cumulative probability"
+  )
+
+
+ggplot()+
+  geom_violin(data=data.frame(null=ari_null),aes(x="Null",y=null),
+              fill="grey80",color=NA,scale="width")+
+  geom_point(aes(x="Observed",y=ari_obs),color="steelblue",size=4)+
+  theme_minimal(base_size=14)+
+  labs(title="Observed ARI vs permutation null",
+       y="Adjusted Rand Index",x=NULL)
+
+
+library(data.table)
+library(infotheo)   # for Theil's U style measure
+
+# contingency table
+tab <- table(DT$A, DT$B)
+
+# 1. Cramér’s V
+chisq <- suppressWarnings(chisq.test(tab))
+n <- sum(tab)
+k <- min(nrow(tab), ncol(tab))
+cramers_v <- sqrt(chisq$statistic / (n * (k - 1)))
+cramers_v 
+```

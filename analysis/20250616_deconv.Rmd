@@ -1,0 +1,613 @@
+---
+title: "20250616_deconv"
+output: html_document
+date: "2025-06-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Brain mouse single cell simulation
+
+```{r}
+library(readxl)
+library(dplyr)
+celltype <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
+train <- read.table("~/cell_type/20240322_Liu2021_training_sample.txt",sep="\t")
+left_over_cells <- celltype %>% filter(!SampleID %in% train$V1)
+output_sample <- left_over_cells$SampleID
+```
+
+### brain example 
+
+```{R}
+set.seed(123)  # For reproducibility
+dg_cells <- left_over_cells %>% filter(MajorType == "DG") %>% sample_n(30)
+odc_cells <- left_over_cells %>% filter(MajorType == "ODC") %>% sample_n(30)
+ca1_cells <- left_over_cells %>% filter(MajorType == "CA1") %>% sample_n(10)
+itl23_cells <- left_over_cells %>% filter(MajorType == "IT-L23") %>% sample_n(15)
+simulated_cells <- bind_rows(dg_cells, odc_cells, ca1_cells, itl23_cells)
+output_sample <- simulated_cells$SampleID
+write.table(output_sample,"~/cell_type/20250616_Liu_simu.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+```
+
+yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250616_Liu_simu.txt | yame rowop - -o binasum > ~/intermediate/20250616_Liu_simu.cg
+
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/intermediate/20250616_Liu_simu.cg",reference_pattern)
+
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
+
+input_pattern_imputed <- as.data.frame(t(apply(input_pattern,1,function(x) {
+  ifelse(is.na(x), mean(x, na.rm = TRUE), x)
+})))
+
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+```
+
+### 50 times
+
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+
+cell_proportion_estimate <- c()
+for (i in 1:25){
+  set.seed(i)
+  dg_cells <- left_over_cells %>% filter(MajorType == "DG") %>% sample_n(55)
+  odc_cells <- left_over_cells %>% filter(MajorType == "ODC") %>% sample_n(20)
+  ca1_cells <- left_over_cells %>% filter(MajorType == "CA1") %>% sample_n(15)
+  asc_cells <- left_over_cells %>% filter(MajorType == "ASC") %>% sample_n(10)
+  simulated_cells <- bind_rows(dg_cells, odc_cells, ca1_cells,asc_cells)
+  output_sample <- simulated_cells$SampleID
+  write.table(output_sample,"~/cell_type/20250616_Liu_simu.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- "yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250616_Liu_simu.txt | yame rowop - -o binasum > ~/intermediate/20250616_Liu_simu.cg"
+  system(text)
+  input_pattern <- GenerateInput("/home/fuh1/intermediate/20250616_Liu_simu.cg",reference_pattern)
+  input_pattern_imputed <- as.data.frame(t(apply(input_pattern,1,function(x) {
+  ifelse(is.na(x), mean(x, na.rm = TRUE), x)})))
+  cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+  cell_proportion_estimate <- cbind(cell_proportion_estimate,cell_proportion)
+}
+
+
+### violin plot
+library(tidyverse)
+df_long <- as.data.frame(cell_proportion_estimate[which(rownames(cell_proportion_estimate) %in% c("DG","ODC","CA1","ASC")),]) %>%
+  rownames_to_column(var = "CellType") %>%
+  pivot_longer(-CellType, names_to = "Sample", values_to = "Score")
+
+# Violin plot
+p1 <- ggplot(df_long, aes(x = CellType, y = Score,fill = CellType)) +
+  geom_violin(trim = T,color = "gray40") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "", y = "Proportion") +
+  theme(legend.position = "None",
+        panel.grid.minor = element_blank(),
+       axis.text.x = element_blank())+ scale_fill_brewer(palette = "Set2")+ylim(0,1)
+
+df_bar <- data.frame(
+  CellType = c("DG", "ODC", "CA1", "ASC"),
+  Proportion = c(0.5, 0.25, 0.15, 0.1)
+)
+
+df_bar$Composition <- "Composition"
+p2 <- ggplot(df_bar, aes(x = Composition, y = Proportion, fill = CellType)) +
+  geom_bar(position = "stack", stat = "identity") +
+  theme_bw() +
+  labs(x = NULL, y = NULL,fill=NULL) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.background = element_blank()
+  ) + scale_fill_brewer(palette = "Set2")
+
+library(patchwork)
+p1 + p2 
+ggsave("~/figures/fuh1/20251103_Liu_simu.pdf",width=5,height=4)
+```
+
+### Random simulations
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+
+cell_proportion_estimate_list <- vector("list", length = 5)
+selected_entries_list <- vector("list", length = 5)
+random_numbers_list <- vector("list", length = 5)
+
+for (i in 1:1){
+  set.seed(i)
+  cell_type_list <- c("ASC","CA1","Chd7","CT-L6","DG","Foxp2","IT-L23",
+                      "IT-L4","IT-L5", "IT-L6", "L6b","MGC","PAL-Inh",
+                      "ODC","OLF-Exc","PT-L5")
+  selected_entries <- sample(cell_type_list, 5)
+  selected_entries_list[[i]] <- selected_entries
+  random_numbers <- sample(5:20, 5, replace = TRUE)
+  random_numbers_list[[i]] <- random_numbers
+  cell_proportion_estimate <- c()
+  for (j in 1:10){
+  cells_1 <- left_over_cells %>% filter(MajorType == cell_type_list[1]) %>% sample_n(random_numbers[1])
+  cells_2 <- left_over_cells %>% filter(MajorType == cell_type_list[2]) %>% sample_n(random_numbers[2])
+  cells_3 <- left_over_cells %>% filter(MajorType == cell_type_list[3]) %>% sample_n(random_numbers[3])
+  cells_4 <- left_over_cells %>% filter(MajorType == cell_type_list[4]) %>% sample_n(random_numbers[4])
+  cells_5 <- left_over_cells %>% filter(MajorType == cell_type_list[5]) %>% sample_n(random_numbers[5])
+  simulated_cells <- bind_rows(cells_1, cells_2, cells_3, cells_4,cells_5)
+  output_sample <- simulated_cells$SampleID
+  write.table(output_sample,"~/cell_type/20250710_Liu_simu.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- "yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250710_Liu_simu.txt | yame rowop - -o binasum > ~/intermediate/20250710_Liu_simu.cg"
+  system(text)
+  input_pattern <- GenerateInput("/home/fuh1/intermediate/20250710_Liu_simu.cg",reference_pattern)
+  input_pattern_imputed <- as.data.frame(t(apply(input_pattern,1,function(x) {
+  ifelse(is.na(x), mean(x, na.rm = TRUE), x)})))
+  #reference_input_imputed_selected <- reference_input_imputed[which(rownames(reference_input_imputed) %in% selected_entries),]
+  cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+  cell_proportion_estimate <- cbind(cell_proportion_estimate,cell_proportion)
+  }
+  cell_proportion_estimate_list[[i]] <- cell_proportion_estimate
+}
+
+cell_proportion_estimate <- c()
+selected_entries_estimate <- c()
+random_numbers_estimate <- c()
+for (i in 1:40){
+  set.seed(i)
+  selected_entries <- sample(left_over_cells$MajorType, 4)
+  selected_entries_estimate <- cbind(selected_entries_estimate,selected_entries)
+  random_numbers <- sample(seq(5,30), 4, replace = TRUE)
+  random_numbers_estimate <- cbind(random_numbers_estimate,random_numbers)
+  cells_1 <- left_over_cells %>% filter(MajorType == selected_entries[1]) %>% sample_n(random_numbers[1])
+  cells_2 <- left_over_cells %>% filter(MajorType == selected_entries[2]) %>% sample_n(random_numbers[2])
+  cells_3 <- left_over_cells %>% filter(MajorType == selected_entries[3]) %>% sample_n(random_numbers[3])
+  cells_4 <- left_over_cells %>% filter(MajorType == selected_entries[4]) %>% sample_n(random_numbers[4])
+  simulated_cells <- bind_rows(cells_1, cells_2, cells_3, cells_4)
+  output_sample <- simulated_cells$SampleID
+  write.table(output_sample,"~/cell_type/20250710_Liu_simu.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- "yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250710_Liu_simu.txt | yame rowop - -o binasum > ~/intermediate/20250710_Liu_simu.cg"
+  system(text)
+  input_pattern <- GenerateInput("/home/fuh1/intermediate/20250710_Liu_simu.cg",reference_pattern)
+  input_pattern_imputed <- as.data.frame(t(apply(input_pattern,1,function(x) {
+  ifelse(is.na(x), mean(x, na.rm = TRUE), x)})))
+  cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+  cell_proportion_estimate <- cbind(cell_proportion_estimate,cell_proportion)
+}
+
+cell_matrix <- as.data.frame(cell_proportion_estimate)
+cell_pairs <- as.data.frame(selected_entries_estimate)
+
+matched_list <- list()
+
+for (i in seq_len(ncol(cell_pairs))) {
+  col_entries <- cell_pairs[[i]]
+  col_name <- colnames(cell_matrix)[i] 
+  values <- mapply(function(cell, index) {
+    if (cell %in% rownames(cell_matrix)) {
+      cell_matrix[cell, i]
+    } else {
+      NA 
+    }
+  }, col_entries, seq_along(col_entries))
+
+  matched_list[[i]] <- data.frame(
+    cell_type = col_entries,
+    column = col_name,
+    value = values,
+    stringsAsFactors = FALSE
+  )
+}
+final_df <- do.call(rbind, matched_list)
+
+random_numbers_estimate <- prop.table(as.matrix(random_numbers_estimate), margin = 2)
+combined_vector <- unlist(as.data.frame(random_numbers_estimate), use.names = FALSE)
+final_df_gt <- data.frame(random_numbers = combined_vector)
+to_plot <- cbind(final_df,final_df_gt)
+colnames(to_plot) <- c("cell_type","simulation_id","Predicted","True")
+
+library(ggplot2)
+model <- cor.test(to_plot$Predicted,to_plot$True,method="pearson")
+r <- model$estimate
+p_val <- model$p.value
+formatted_p <- format(signif(p_val, digits = 3), scientific = TRUE)
+
+ggplot(to_plot, aes(x = True, y = Predicted)) +
+  geom_point(color = "red3", size = 2) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue3",linetype = "dashed") +
+  annotate("text", x = min(to_plot$Predicted), y = max(to_plot$True)+0.1,
+           label = paste0("Pearson R = ", round(r, 3), 
+                          "\nP = ", formatted_p),
+           hjust = 0, vjust = 1.2, size = 4) +
+  labs(title = "",
+       x = "True",
+       y = "Predicted") +
+  theme_bw()+theme(text = element_text(size = 11),
+        panel.grid.minor = element_blank())
+ggsave("~/figures/fuh1/20250716_LiuSimu.pdf",width=3.5,height=3.5)
+```
+
+
+
+### Human simulation
+
+```{r}
+library(readxl)
+library(dplyr)
+meta_updated <- read.table("~/cell_type/20250425_eckerhuman.tsv",sep="\t")
+train <- read.table("~/cell_type/Zhou2025_sample.txt",sep="\t")
+left_over_cells <- meta_updated %>% filter(!cell %in% train$V1)
+output_sample <- left_over_cells$cell
+
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+
+cell_proportion_estimate <- c()
+for (i in 1:25){
+  t_cells <- left_over_cells %>% filter(label %in% c("Tmem CD4","Tmem CD8","Tnaive CD4","Tnaive CD4")) %>% sample_n(60)
+  b_cells <- left_over_cells %>% filter(label %in% c("B Mem","B Naive","B Plasma ")) %>% sample_n(15)
+  nk_cells <- left_over_cells %>% filter(label %in% c("NK CD16","NK CD56")) %>% sample_n(5)
+  mono_cells <- left_over_cells %>% filter(label %in% c("Mono")) %>% sample_n(20)
+  simulated_cells <- bind_rows(t_cells, b_cells, nk_cells, mono_cells)
+  output_sample <- simulated_cells$cell
+  write.table(output_sample,"~/cell_type/20250616_Zhou_simu.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- "yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg -l ~/cell_type/20250616_Zhou_simu.txt | yame rowop - -o binasum > ~/intermediate/20250616_Zhou_simu.cg"
+  system(text)
+  input_pattern <- GenerateInput("/home/fuh1/intermediate/20250616_Zhou_simu.cg",reference_pattern)
+  input_pattern_imputed <- as.data.frame(t(apply(input_pattern,1,function(x) {
+  ifelse(is.na(x), mean(x, na.rm = TRUE), x)})))
+  cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+  cell_proportion_estimate <- cbind(cell_proportion_estimate,cell_proportion)
+}
+
+b_cell_row <- cell_proportion_estimate["B_Mem", ] +
+              cell_proportion_estimate["B_Naive", ] +
+              cell_proportion_estimate["B_Plasma", ]
+t_cell_row <- cell_proportion_estimate["Tmem_CD4", ] +
+              cell_proportion_estimate["Tmem_CD8", ] +
+              cell_proportion_estimate["Tnaive_CD4", ] + 
+              cell_proportion_estimate["Tnaive_CD8", ]
+nk_cell_row <- cell_proportion_estimate["NK_CD16", ] +
+               cell_proportion_estimate["NK_CD56", ]
+mono_row <- cell_proportion_estimate["Mono", ] +
+               cell_proportion_estimate["Macrophage", ]
+
+cell_proportion_estimate <- rbind(cell_proportion_estimate, B_Cell = b_cell_row,T_Cell=t_cell_row,NK_Cell = nk_cell_row,Monocytes=mono_row)
+
+### violin plot
+library(tidyverse)
+df_long <- as.data.frame(cell_proportion_estimate[which(rownames(cell_proportion_estimate) %in% c("B_Cell","T_Cell","NK_Cell","Monocytes")),]) %>%
+  rownames_to_column(var = "CellType") %>%
+  pivot_longer(-CellType, names_to = "Sample", values_to = "Score")
+
+# Violin plot
+p1 <- ggplot(df_long, aes(x = CellType, y = Score,fill = CellType)) +
+  geom_violin(trim = T,color = "gray40") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "", y = "Proportion") +
+  theme(legend.position = "None",
+        panel.grid.minor = element_blank(),
+       axis.text.x = element_blank())+ scale_fill_brewer(palette = "Set2")+ylim(0,1)
+
+df_bar <- data.frame(
+  CellType = c("B_Cell", "T_Cell", "NK_Cell", "Mono"),
+  Proportion = c(0.15, 0.6, 0.05, 0.2)
+)
+
+df_bar$Composition <- "Composition"
+p2 <- ggplot(df_bar, aes(x = Composition, y = Proportion, fill = CellType)) +
+  geom_bar(position = "stack", stat = "identity") +
+  theme_bw() +
+  labs(x = NULL, y = NULL,fill=NULL) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.background = element_blank()
+  ) + scale_fill_brewer(palette = "Set2")
+
+library(patchwork)
+p1 + p2 
+ggsave("~/figures/fuh1/20250717_Zhou_simu.pdf",width=5,height=4)
+```
+
+### Random simulations
+```{r}
+library(readxl)
+library(dplyr)
+meta_updated <- read.table("~/cell_type/20250425_eckerhuman.tsv",sep="\t")
+train <- read.table("~/cell_type/Zhou2025_sample.txt",sep="\t")
+left_over_cells <- meta_updated %>% filter(!cell %in% train$V1)
+output_sample <- left_over_cells$cell
+
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+
+cell_proportion_estimate_list <- vector("list", length = 5)
+selected_entries_list <- vector("list", length = 5)
+random_numbers_list <- vector("list", length = 5)
+
+cell_proportion_estimate <- c()
+selected_entries_estimate <- c()
+random_numbers_estimate <- c()
+for (i in 1:50){
+  set.seed(i)
+  selected_entries <- sample(left_over_cells$label, 4)
+  selected_entries_estimate <- cbind(selected_entries_estimate,selected_entries)
+  #selected_entries_list[[i]] <- selected_entries
+  random_numbers <- sample(seq(5,30), 4, replace = TRUE)
+  random_numbers_estimate <- cbind(random_numbers_estimate,random_numbers)
+  #random_numbers_list[[i]] <- random_numbers
+  #for (j in 1:10){
+  #set.seed(j)
+  cells_1 <- left_over_cells %>% filter(label == selected_entries[1]) %>% sample_n(random_numbers[1])
+  cells_2 <- left_over_cells %>% filter(label == selected_entries[2]) %>% sample_n(random_numbers[2])
+  cells_3 <- left_over_cells %>% filter(label == selected_entries[3]) %>% sample_n(random_numbers[3])
+  cells_4 <- left_over_cells %>% filter(label == selected_entries[4]) %>% sample_n(random_numbers[4])
+  simulated_cells <- bind_rows(cells_1, cells_2, cells_3, cells_4)
+  output_sample <- simulated_cells$cell
+  write.table(output_sample,"~/cell_type/20250710_Zhou_simu.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- "yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg -l ~/cell_type/20250710_Zhou_simu.txt | yame rowop - -o binasum > ~/intermediate/20250710_Zhou_simu.cg"
+  system(text)
+  input_pattern <- GenerateInput("/home/fuh1/intermediate/20250710_Zhou_simu.cg",reference_pattern)
+  input_pattern_imputed <- as.data.frame(t(apply(input_pattern,1,function(x) {
+  ifelse(is.na(x), mean(x, na.rm = TRUE), x)})))
+  #reference_input_imputed_selected <- reference_input_imputed[which(rownames(reference_input_imputed) %in% selected_entries),]
+  cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+  cell_proportion_estimate <- cbind(cell_proportion_estimate,cell_proportion)
+  #}
+  #cell_proportion_estimate_list[[i]] <- cell_proportion_estimate
+}
+
+### scatter plot
+#ground_truth_elements <- do.call(rbind, selected_entries_list)
+#ground_truth_proportion <- do.call(rbind, random_numbers_list)
+#row_totals <- rowSums(ground_truth_proportion)
+#ground_truth_proportion <- ground_truth_proportion / row_totals
+
+selected_entries_estimate <- t(apply(selected_entries_estimate,1, function(x) {
+  gsub(" ", "_", x)
+}))
+selected_entries_estimate <- t(apply(selected_entries_estimate,1, function(x) {
+  gsub("/", "_", x)
+}))
+
+cell_matrix <- as.data.frame(cell_proportion_estimate)
+cell_pairs <- as.data.frame(selected_entries_estimate)
+
+matched_list <- list()
+
+for (i in seq_len(ncol(cell_pairs))) {
+  col_entries <- cell_pairs[[i]]
+  col_name <- colnames(cell_matrix)[i] 
+  values <- mapply(function(cell, index) {
+    if (cell %in% rownames(cell_matrix)) {
+      cell_matrix[cell, i]
+    } else {
+      NA 
+    }
+  }, col_entries, seq_along(col_entries))
+
+  matched_list[[i]] <- data.frame(
+    cell_type = col_entries,
+    column = col_name,
+    value = values,
+    stringsAsFactors = FALSE
+  )
+}
+final_df <- do.call(rbind, matched_list)
+
+# 
+# 
+# selected_list <- Map(function(df, rn) df[rn, , drop = FALSE], cell_proportion_estimate_list, selected_entries_list_new)
+# flattened_list <- lapply(selected_list, function(df) as.vector(as.matrix(df)))
+# combined_vector <- unlist(flattened_list, use.names = FALSE)
+# final_df <- data.frame(Value = combined_vector)
+#repeated_rows <- apply(ground_truth_proportion, 1, function(row) rep(row, 10))
+# flattened <- as.vector(t(random_numbers_estimate))
+# final_df_gt <- data.frame(Value = flattened)
+random_numbers_estimate <- prop.table(as.matrix(random_numbers_estimate), margin = 2)
+combined_vector <- unlist(as.data.frame(random_numbers_estimate), use.names = FALSE)
+final_df_gt <- data.frame(random_numbers = combined_vector)
+to_plot <- cbind(final_df,final_df_gt)
+colnames(to_plot) <- c("cell_type","simulation_id","Predicted","True")
+
+library(ggplot2)
+model <- cor.test(to_plot$Predicted,to_plot$True,method="pearson")
+r <- model$estimate
+p_val <- model$p.value
+formatted_p <- format(signif(p_val, digits = 3), scientific = TRUE)
+
+ggplot(to_plot, aes(x = True, y = Predicted)) +
+  geom_point(color = "red3", size = 2) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue3",linetype = "dashed") +
+  annotate("text", x = min(to_plot$Predicted), y = max(to_plot$True)+0.1,
+           label = paste0("Pearson R = ", round(r, 3), 
+                          "\nP = ", formatted_p),
+           hjust = 0, vjust = 1.2, size = 4) +
+  labs(title = "",
+       x = "True",
+       y = "Predicted") +
+  theme_bw()+theme(text = element_text(size = 11),
+        panel.grid.minor = element_blank())
+ggsave("~/figures/fuh1/20250716_ZhouSimu.pdf",width=3.5,height=3.5)
+```
+
+### Random simulations for human immune cells 
+
+sbatch ~/cell_type/20250718_deconv.sh
+
+```{r}
+#results <- readRDS("~/cell_type/20250718_deconv.rds")
+results <- readRDS("~/cell_type/20251104_deconv_18.rds")
+to_plot_all <- c()
+
+for (list_number in 1:4){
+  selected_entries_estimate <- results[[2]][[list_number]]
+  cell_proportion_estimate <- results[[1]][[list_number]]
+  random_numbers_estimate <- results[[3]][[list_number]]
+
+  selected_entries_estimate <- t(apply(selected_entries_estimate,1, function(x) {
+    gsub(" ", "_", x)
+  }))
+  selected_entries_estimate <- t(apply(selected_entries_estimate,1, function(x) {
+    gsub("/", "_", x)
+  }))
+
+  cell_matrix <- as.data.frame(cell_proportion_estimate)
+  cell_pairs <- as.data.frame(selected_entries_estimate)
+
+  cell_matrix$cell_type <- rownames(cell_matrix)
+  cell_matrix$cell_type <- gsub("^B_(Mem|Naive|Plasma)$", "B_cell", cell_matrix$cell_type)
+  cell_matrix$cell_type <- gsub("^NK_(CD16|CD56)$", "NK_cell", cell_matrix$cell_type)
+  cell_matrix$cell_type <- gsub("^Tnaive_(CD4|CD8)$", "Tnaive", cell_matrix$cell_type)
+  cell_matrix_summarized <- cell_matrix %>%
+    group_by(cell_type) %>%
+    summarise(across(starts_with("V"), sum))
+
+  rownames(cell_matrix_summarized) <- cell_matrix_summarized$cell_type
+  cell_matrix <- cell_matrix_summarized %>% select(-cell_type)
+
+  cell_matrix <- as.data.frame(cell_matrix)
+  rownames(cell_matrix) <- rownames(cell_matrix_summarized)
+
+  matched_list <- list()
+  for (i in seq_len(ncol(cell_pairs))) {
+    col_entries <- cell_pairs[[i]]
+    col_name <- colnames(cell_matrix)[i] 
+    values <- mapply(function(cell, index) {
+      if (cell %in% rownames(cell_matrix)) {
+        cell_matrix[cell, i]
+      } else {
+        NA 
+      }
+    }, col_entries, seq_along(col_entries))
+
+   matched_list[[i]] <- data.frame(
+      cell_type = col_entries,
+      column = col_name,
+      value = values,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  final_df <- do.call(rbind, matched_list)
+
+  random_numbers_estimate <- prop.table(as.matrix(random_numbers_estimate), margin = 2)
+  combined_vector <- unlist(as.data.frame(random_numbers_estimate), use.names = FALSE)
+  final_df_gt <- data.frame(random_numbers = combined_vector)
+  to_plot <- cbind(final_df,final_df_gt)
+  colnames(to_plot) <- c("cell_type","simulation_id","Predicted","True")
+  diff <- abs(to_plot$Predicted - to_plot$True)
+  to_plot$n_cell = list_number+1
+  to_plot_all <- rbind(to_plot_all,to_plot)
+}
+
+
+library(ggplot2)
+library(dplyr)
+to_plot <- to_plot_all
+
+mse_stats <- to_plot %>%
+  group_by(n_cell) %>%
+  summarise(
+    mse = mean((Predicted - True)^2),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    label = paste0("MSE = ", round(mse, 4)),
+    y_pos = 0.97 - 0.05 * (as.numeric(as.factor(n_cell)) - 1)
+  )
+
+n_labels <- paste0("n = ", sort(unique(to_plot$n_cell)))
+
+to_plot_labeled <- to_plot %>%
+  left_join(mse_stats, by = "n_cell")
+
+
+ggplot(to_plot_labeled, aes(x = True, y = Predicted, color = as.factor(n_cell), shape=as.factor(cell_type))) +
+  geom_point(size = 2) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "black") +
+  geom_text(data = mse_stats,
+            aes(x = 0, y = y_pos, label = label, color = as.factor(n_cell)),
+            inherit.aes = FALSE,
+            hjust = 0, vjust = 1, size = 4, show.legend = FALSE) +
+  scale_color_brewer(palette = "Spectral", labels = n_labels) +
+  scale_shape_manual(values = c(0, 1, 2, 3, 4, 5, 6, 7)) + 
+  labs(title = "",
+       x = "True",
+       y = "Predicted",
+       color = "",     
+       shape = "") + 
+  theme_bw() +
+  theme(text = element_text(size = 11),
+        panel.grid.minor = element_blank())+xlim(0,1)+ylim(0,1)
+ggsave("~/figures/fuh1/20250728_immune_blood_18.pdf",width=4.5,height=4)
+
+ggplot(to_plot_labeled, aes(x = True, y = Predicted, color = as.factor(n_cell))) +
+  geom_point(size = 1.5) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  geom_text(data = mse_stats,
+            aes(x = 0.1, y = y_pos, label = label, color = as.factor(n_cell)),
+            inherit.aes = FALSE,
+            hjust = 0, vjust = 1, size = 4,show.legend = FALSE) +
+  scale_color_brewer(palette = "Spectral", labels = n_labels) +
+  labs(title = "",
+       x = "True",
+       y = "Predicted",
+       color = NULL) + 
+  theme_bw() +
+  theme(text = element_text(size = 11),
+        panel.grid.minor = element_blank())
+#ggsave("~/figures/fuh1/20250723_immune_blood.pdf",width=4,height=3.5)
+
+
+ggplot(to_plot_labeled, aes(x = True, y = Predicted, color = as.factor(cell_type))) +
+  geom_point(size = 1.5) +
+  scale_color_brewer(palette = "Accent") +
+  labs(title = "",
+       x = "True",
+       y = "Predicted",
+       color = NULL) + 
+  theme_bw() +
+  theme(text = element_text(size = 11),
+        panel.grid.minor = element_blank())+ylim(0,0.95)
+#ggsave("~/figures/fuh1/20250723_immune_blood_celltype.pdf",width=4,height=3.5)
+```
+
+### cfDNA
+
+```{r}
+reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+input_pattern <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/20240918_ARDS_cfWGBS.cg",reference_pattern)
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer_byCellType.cg",reference_pattern)
+
+input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 15)
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 15)
+cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+
+cell_proportion_filtered <- cell_proportion[rowSums(cell_proportion <= 0.02) <= 4, ]
+cell_proportion_filtered <- rbind(cell_proportion_filtered,cell_proportion["hepatocyte",])
+rownames(cell_proportion_filtered)[8] <- ""
+
+pdf("~/figures/fuh1/20251029_cfdna_Zhou_2.pdf",width=4,height=3.5)
+library(pheatmap)
+pheatmap(cell_proportion_filtered, 
+         cluster_rows = FALSE, 
+         cluster_cols = FALSE, 
+         scale = "none")
+dev.off()
+
+```
+

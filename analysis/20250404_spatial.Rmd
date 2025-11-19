@@ -8,29 +8,14 @@ date: "2025-04-04"
 library(Seurat)
 library(ArchR)
 reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
-input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLB14DM/SpMETSLB14DM.cg",reference_pattern)
-valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240331_B14D_barcodesK.rds")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLE14DM/SpMETSLE14DM.cg",reference_pattern)
+#input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLB14DM/SpMETSLB14DM.cg",reference_pattern)
+valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240331_E14D_barcodesK.rds")
+#valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240331_B14D_barcodesK.rds")
 input_pattern <- input_pattern[rownames(input_pattern) %in% valid_barcodes,]
 #saveRDS(input_pattern,"~/cell_type/20250408_P21_input.rds")
 
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
-
-library(nnls)
-nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000) {
-  ref <- t(ref[,1:number_patterns])
-  mixture_matrix <- t(mixture_matrix[,1:number_patterns])
-  common_rows <- intersect(rownames(ref), rownames(mixture_matrix))
-  ref <- ref[common_rows, , drop = FALSE]
-  mixture_matrix <- mixture_matrix[common_rows, , drop = FALSE]
-  result <- apply(mixture_matrix, 2, function(sample) {
-    fit <- nnls(ref, sample)
-    prop <- fit$x
-    prop / sum(prop)
-  })
-  colnames(result) <- colnames(mixture_matrix)
-  rownames(result) <- colnames(ref)
-  return(result)
-}
 
 input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 30)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
@@ -64,14 +49,19 @@ P21_brain <- RunUMAP(P21_brain, reduction = "mpca",  reduction.name = "meth.umap
 custom_colors <- c("#8A9FD1","#FEE500","#89C75F","#D51F26","#F47D2B","#D8A767","#89288F","#208A42")
 P21_brain$DNAm_snn_res.0.7 <- paste0("D",P21_brain$DNAm_snn_res.0.7)
 DimPlot(P21_brain, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7',cols=custom_colors, pt.size = 0.7,alpha = 0.7)  + NoGrid() + ggtitle("")
-#ggsave("~/figures/fuh1/20250213_P21_MethScope_umap.pdf",width=3,height=3)
+#ggsave("~/figures/fuh1/2025707_P21_MethScope_umap.pdf",width=3,height=3)
+
+### E14D
+custom_colors <- c("#8A9FD1","#89288F","#FEE500","#F47D2B","#D51F26","#208A42")
+DimPlot(P21_brain, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols=custom_colors,pt.size = 0.7,alpha = 0.7)  + NoGrid() + ggtitle("")
+ggsave("~/figures/fuh1/20250616_E14D_MethScope_umap.pdf",width=3,height=3)
 
 partition <- Idents(P21_brain)
 #partition <- P21_brain$MethScope
 
 spatial_barcode <- colnames(P21_brain)
-spatial_plot(partition,spatial_barcode) + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE)
-#ggsave("~/figures/fuh1/20250213_P21_MethScope.pdf",width=4.5,height=4)
+spatial_plot(partition,spatial_barcode) + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE,labels = c("D0","D1","D2","D3","D4","D5")) + labs(color ="")
+#ggsave("~/figures/fuh1/20250616_E14D_MethScope.pdf",width=4.5,height=4)
 #saveRDS(P21_brain,"~/cell_type/20250408_P21_input_obj.rds")
 
 
@@ -102,7 +92,7 @@ prop_df$group <- Idents(P21_brain)  # add group label
 
 avg_props <- prop_df %>%
   group_by(group) %>%
-  summarise(across(.cols = everything(), .fns = mean))
+  dplyr::summarise(across(.cols = everything(), .fns = mean))
 
 avg_props_mat <- as.data.frame(t(avg_props[,-1]))  # drop group column before transposing
 colnames(avg_props_mat) <- avg_props$group
@@ -140,6 +130,10 @@ cell_proportion_z_clean <- cell_proportion_z[!apply(cell_proportion_z, 1, functi
 cell_proportion_z_clean <- cell_proportion_z_clean[apply(cell_proportion_z_clean, 1, function(x) all(abs(x) <= 20)), ]
 cell_proportion_z_clean <- pmax(pmin(cell_proportion_z_clean, 3), -3)
 prop_mat <- cell_proportion_z_clean
+
+cell_types <- c("ASC","DG-po","CT-L6","IT-L23","DG","ODC","CA1","CA3","MGC","EC","OLF-Exc","PAL-Inh")
+prop_mat <- prop_mat[rownames(prop_mat) %in% cell_types,]
+
 # Reorder samples by cluster
 cluster_vec <- Idents(P21_brain)
 cluster_order <- order(cluster_vec)
@@ -155,7 +149,8 @@ annotation_col <- data.frame(Cluster = clusters)
 rownames(annotation_col) <- colnames(prop_ordered)
 
 # Plot the heatmap
-pdf("~/figures/fuh1/20250422_P21_proportion.pdf",width=6,height=4.5)
+library(pheatmap)
+pdf("~/figures/fuh1/20250707_P21_proportion.pdf",width=6,height=4.5)
 pheatmap(prop_ordered,
          cluster_rows = FALSE,
          cluster_cols = FALSE,
@@ -165,9 +160,79 @@ pheatmap(prop_ordered,
          fontsize_row = 10,
          scale = "none",
          main = "",
-         color = hcl.colors(50, "BluYl"))
+         color = hcl.colors(50, "Viridis"))
 dev.off()
 
+### cluster columns 
+# Prepare annotation for columns
+cluster_levels <- unique(clusters)
+cluster_colors <- setNames(
+  c("#8A9FD1", "#FEE500", "#89C75F", "#D51F26", "#F47D2B", "#D8A767", "#89288F", "#208A42"),
+  cluster_levels
+)
+
+# Annotation dataframe for columns
+annotation_col <- data.frame(Cluster = clusters)
+rownames(annotation_col) <- colnames(prop_ordered)
+
+# Define annotation with colors
+col_ha <- HeatmapAnnotation(
+  df = annotation_col,
+  col = list(Cluster = cluster_colors),
+  show_annotation_name = TRUE
+)
+
+library(ComplexHeatmap)
+min_val <- min(prop_ordered)
+max_val <- max(prop_ordered)
+# Get all cluster levels you want, in order
+desired_order <- 0:7
+clusters_named <- factor(
+  clusters,
+  levels = desired_order,
+  labels = paste0("Cluster ", desired_order)
+)
+
+pdf("~/figures/fuh1/20250707_P21_proportion.pdf",width=6,height=4.5)
+Heatmap(
+  as.matrix(prop_ordered),
+  name = "Proportion",
+  top_annotation = col_ha,
+  cluster_rows = FALSE,
+  cluster_columns = TRUE,         # This will cluster within each cluster
+  column_split = clusters_named,        # Split by cluster group
+  column_title = NULL,   
+  show_column_names = FALSE,
+  row_names_gp = gpar(fontsize = 10),
+  col = colorRamp2(
+  seq(min_val, max_val, length.out = 50),
+  hcl.colors(50, "Inferno")
+  ),
+  show_column_dend = FALSE        # Hides the global dendrogram (optional)
+)
+dev.off()
+
+### violin plot
+cell_types <- c("CT-L6","IT-L23","DG","ODC","CA1","CA3")
+prop_df <- as.data.frame(t(cell_proportion))
+prop_df$group <- Idents(P21_brain)  # add group label
+prop_df <- prop_df %>% dplyr::select(c(cell_types,"group"))
+
+long_df <- prop_df %>%
+  tidyr::pivot_longer(
+    cols = -group,
+    names_to = "cell_type",
+    values_to = "expression"
+  )
+
+ggplot(long_df, aes(x = factor(group), y = expression, fill = cell_type)) +
+  geom_violin(scale = "width", trim = T, color = "black") +
+  labs(
+    x = "",
+    y = "Proportion",
+    fill = "Cell Type",
+    title = ""
+  ) + theme_bw()
 ```
 
 ```{r}
@@ -264,7 +329,7 @@ spatial.obj <- RunUMAP(spatial.obj, reduction = "pca", dims = 1:30)
 meth_mtx <- read.csv("~/tmp/Spatial_methseq/scbs/SpMETSLHLN4D_matrix/methylation_fractions.csv.gz", row.names=1) %>% as.matrix()
 ### tbl from yame summary
 tbl$V8 <- as.numeric(tbl$V8)
-barcodes_pass <- tbl %>% filter(V8 > 63412) %>% select(V2)
+barcodes_pass <- tbl %>% filter(V8 > 63412) %>% filter(V8 < 1100000) %>% select(V2)
 barcodes_pass <- barcodes_pass[,1]
 filter_barcode <- sub("\\..*$", "", rownames(meth_mtx))
 rownames(meth_mtx) <- filter_barcode
@@ -282,7 +347,7 @@ idx <- match(spatial_coordinate_filter$V4,spatial_barcode)
 DNAm_data <- DNAm_data[idx,]
 spatial_barcode <- spatial_barcode[idx]
 barcodes_to_keep <- sub("\\..*$", "", rownames(DNAm_data))
-#saveRDS(barcodes_to_keep,"/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250430_HLN4D_barcodesK.rds")
+#saveRDS(barcodes_to_keep,"/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20251020_HLN4D_barcodesK.rds")
 ```
 
 ### imputation
@@ -325,7 +390,7 @@ prcomp_iterative <- function(x, n=10, n_iter=100, min_gain=0.01, ...) {
 pca <- DNAm_data %>%
   scale(center = T, scale = F) %>%
   prcomp_iterative(n = 30, n_iter = 100)
-saveRDS(pca,"~/tmp/20250430_tmp.rds")
+#saveRDS(pca,"~/tmp/20251020_HLD4N.rds")
 ```
 
 ```{r}
@@ -338,10 +403,11 @@ rownames(bc_df) <- bc_df$DNA_bc
 
 ### from imputation
 DNAm_data <- as.data.frame(pca[[2]])
+DNAm_data <- DNAm_data[match(barcodes_to_keep,rownames(DNAm_data)),]
 ### scale this from 0 to 1
 DNAm_data <- as.data.frame(lapply(DNAm_data, function(x) (x - min(x)) / (max(x) - min(x))))
 DNAm_matrix <- DNAm_data
-rownames(DNAm_matrix) <- rownames(pca[[2]])
+rownames(DNAm_matrix) <- barcodes_to_keep
 
 rownames(DNAm_matrix) <- sub("\\..*$", "", rownames(DNAm_matrix))
 rownames(DNAm_matrix) <- paste0(substr(rownames(DNAm_matrix),9,16), substr(rownames(DNAm_matrix),1,8))
@@ -375,25 +441,25 @@ spatial.obj <- RunPCA(spatial.obj, assay = "DNAm", reduction.name = 'mpca', verb
 
 spatial.obj <- FindNeighbors(spatial.obj, reduction = "mpca", dims = 1:30)
 spatial.obj <- FindClusters(spatial.obj, verbose = FALSE, resolution = 1)
-spatial.obj <- RunUMAP(spatial.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+spatial.obj <- RunUMAP(spatial.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30,n.neighbors = 20)
 
 
-
-spatial.obj$DNAm_snn_res.1<- paste0('D', spatial.obj$DNAm_snn_res.1)
+spatial.obj$DNAm_snn_res.1 <- paste0('D', spatial.obj$DNAm_snn_res.1)
 n_clusters <- length(unique(spatial.obj$DNAm_snn_res.1))
-cols <- c("#D51F26","#272E6A","#208A42","#89288F")
+
+cols <- c("#D51F26","#8A9FD1","#D8A767")
 
 DimPlot(spatial.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.1',pt.size = 0.7,alpha = 0.7,cols=cols) + NoGrid() + ggtitle("")
-ggsave("~/figures/fuh1/20250501_HLN4_VMR_umap.pdf",width=3,height=3)
+ggsave("~/figures/fuh1/20250724_HLN4_VMR_umap.pdf",width=3,height=3)
 
 spatial.obj_barcode <- sub("\\..*$", "", colnames(spatial.obj))
 spatial.obj_barcode <- paste0(substr(spatial.obj_barcode,9,16), substr(spatial.obj_barcode,1,8))
 
 digits <- as.integer(gsub("D", "", spatial.obj@meta.data$DNAm_snn_res.1))
-valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250430_HLN4D_barcodesK.rds")
+valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20251020_HLN4D_barcodesK.rds")
 
-spatial_plot(as.factor(digits),valid_barcodes) + scale_color_manual(values=cols,na.value="white",na.translate = FALSE,labels = c("D0", "D1", "D2")) + labs(color ="")
-#ggsave("~/figures/fuh1/20250501_HLN4_VMR.pdf",width=4.5,height=4)
+spatial_plot(as.factor(digits),valid_barcodes) + scale_color_manual(values=cols,na.value="white",na.translate = FALSE,labels = c("D0", "D1", "D2","D3")) + labs(color ="")
+ggsave("~/figures/fuh1/20250724_HLN4_VMR.pdf",width=4.5,height=4)
 ```
 
 
@@ -403,33 +469,24 @@ spatial_plot(as.factor(digits),valid_barcodes) + scale_color_manual(values=cols,
 library(Seurat)
 library(ArchR)
 reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
-input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLHLN4D/SpMETSLHLN4D.cg",reference_pattern)
-valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250430_HLN4D_barcodesK.rds")
+#input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLHLN4D/SpMETSLHLN4D.cg",reference_pattern)
+valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20251020_HLN4D_barcodesK.rds")
+
+input_pattern <- readRDS("~/cell_type/20250423_HLN4_input.rds")
 input_pattern <- input_pattern[rownames(input_pattern) %in% valid_barcodes,]
+input_pattern <- input_pattern %>% select(-Pna)
 #saveRDS(input_pattern,"~/cell_type/20250423_HLN4_input.rds")
 
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
 
-library(nnls)
-nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000) {
-  ref <- t(ref[,1:number_patterns])
-  mixture_matrix <- t(mixture_matrix[,1:number_patterns])
-  common_rows <- intersect(rownames(ref), rownames(mixture_matrix))
-  ref <- ref[common_rows, , drop = FALSE]
-  mixture_matrix <- mixture_matrix[common_rows, , drop = FALSE]
-  mixture_matrix <- mixture_matrix[rownames(ref),]
-  result <- apply(mixture_matrix, 2, function(sample) {
-    fit <- nnls(ref, sample)
-    prop <- fit$x
-    prop / sum(prop)
-  })
-  colnames(result) <- colnames(mixture_matrix)
-  rownames(result) <- colnames(ref)
-  return(result)
-}
-
 input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 30)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+
+# unique_patterns <- sortedFrequency_df %>% filter(unique == "Unique hypomethylated") %>% select(pattern)
+# input_pattern_imputed_filter <- input_pattern_imputed[,unique_patterns[,1]]
+# reference_input_imputed_filter <- reference_input_imputed[,unique_patterns[,1]]
+# cell_proportion_filter <- nnls_deconv(reference_input_imputed_filter,input_pattern_imputed_filter,number_patterns = 62)
+
 cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
 input_pattern_imputed <- cbind(input_pattern_imputed,t(cell_proportion))
 
@@ -437,7 +494,8 @@ input_pattern_imputed <- cbind(input_pattern_imputed,t(cell_proportion))
 # input_pattern_filtered <- input_pattern[!all_na_rows, ]
 # input_pattern_imputed <- imputeRowMean(input_pattern_filtered,na_percent = 40)
 
-input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 30)
+input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 1)
+#input_pattern_imputed <- input_pattern_imputed %>% select(-P1,-P2)
 lymph_spatial <- CreateSeuratObject(counts = t(input_pattern_imputed), assay = "DNAm")
 VariableFeatures(lymph_spatial) <- rownames(lymph_spatial[['DNAm']])
 DefaultAssay(lymph_spatial) <- "DNAm"
@@ -446,29 +504,268 @@ lymph_spatial <- ScaleData(lymph_spatial, assay = "DNAm", verbose = FALSE)
 #lymph_spatial@assays$DNAm@layers$scale.data <- as.matrix(lymph_spatial@assays$DNAm@layers$counts)
 
 lymph_spatial <- RunPCA(lymph_spatial,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
-lymph_spatial <- FindNeighbors(lymph_spatial, reduction = "mpca", dims = 1:10)
+lymph_spatial <- FindNeighbors(lymph_spatial, reduction = "mpca", dims = 1:30)
 lymph_spatial <- FindClusters(lymph_spatial, verbose = FALSE, resolution = 0.7)
-lymph_spatial <- RunUMAP(lymph_spatial, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:10)
+lymph_spatial <- RunUMAP(lymph_spatial, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30,n.neighbors = 20, min.dist = 0.3,spread = 0.3,set.op.mix.ratio = 0.3)
 
-#custom_colors <- c("#8A9FD1","#FEE500","#89C75F","#D51F26","#F47D2B","#D8A767","#89288F","#208A42")
+custom_colors <- c("#8A9FD1","#FEE500","#89C75F","#D51F26")
 lymph_spatial$DNAm_snn_res.0.7 <- paste0("D",lymph_spatial$DNAm_snn_res.0.7)
-DimPlot(lymph_spatial, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', pt.size = 0.7,alpha = 0.7)  + NoGrid() + ggtitle("")
-
-
-#ggsave("~/figures/fuh1/20250423_P21_MethScope_umap.pdf",width=3,height=3)
+DimPlot(lymph_spatial, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', pt.size = 0.7,alpha = 0.7,cols=custom_colors)  + NoGrid() + ggtitle("")
+ggsave("~/figures/fuh1/20250724_HLN4_MethScope_umap.pdf",width=3,height=3)
 
 partition <- Idents(lymph_spatial)
 #prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000,input_pattern,smooth = T,KNeighbor = 2)
 #partition <- P21_brain$MethScope
 
 spatial_barcode <- colnames(lymph_spatial)
-spatial_plot(partition,spatial_barcode) # + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE)
-#ggsave("~/figures/fuh1/20250501_HLN4_MethScope.pdf",width=4.5,height=4)
+spatial_plot(partition,spatial_barcode)  + scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE,labels = c("D0","D1","D2","D3","D4")) + labs(color ="")
+ggsave("~/figures/fuh1/20250724_HLN4_MethScope.pdf",width=4.5,height=4)
 
 
-cell_type <- "Hema_Mast"
-spatial_plot(cell_proportion[cell_type,],names(cell_proportion[cell_type,]))+labs(color = cell_type)
+cell_type <- "Tnaive_CD8"
+test <- cell_proportion[cell_type,]
+#test[which(test > 0.2)] <- 0.2
+spatial_plot(test,names(cell_proportion[cell_type,]))+labs(color = cell_type)
+#spatial_plot(cell_proportion_z_clean[cell_type,],names(cell_proportion_z_clean[cell_type,]))+labs(color = cell_type)
+
 
 ggsave(paste0("~/figures/fuh1/20250501_HLN4_",cell_type,".pdf"),width=4.5,height=4)
+
 ```
+
+```{R}
+library(pheatmap)
+cell_proportion_z <- t(scale(t(cell_proportion), center = TRUE, scale = TRUE))
+cell_proportion_z_clean <- cell_proportion_z[!apply(cell_proportion_z, 1, function(x) all(is.na(x))), ]
+cell_proportion_z_clean <- cell_proportion_z_clean[apply(cell_proportion_z_clean, 1, function(x) all(abs(x) <= 20)), ]
+cell_proportion_z_clean <- pmax(pmin(cell_proportion_z_clean, 3), -3)
+
+cell_type <- c("B_Mem","B_Naive","B_Plasma","Macrophage","NK_CD56","Tmem_CD4","Tmem_CD8","Tnaive_CD4","Tnaive_CD8")
+cell_proportion_z_clean <- cell_proportion_z_clean[cell_type,]
+
+prop_mat <- cell_proportion_z_clean
+# Reorder samples by cluster
+cluster_vec <- Idents(lymph_spatial)
+cluster_order <- order(cluster_vec)
+prop_ordered <- prop_mat[, cluster_order]  # reorder columns
+clusters <- cluster_vec[cluster_order]
+
+# Optional: assign a color per cluster
+cluster_levels <- unique(clusters)
+cluster_colors <- setNames(c("#8A9FD1","#FEE500","#89C75F","#D51F26","#D8A767"), cluster_levels)
+
+# Prepare annotation for columns (samples)
+annotation_col <- data.frame(Cluster = clusters)
+rownames(annotation_col) <- colnames(prop_ordered)
+
+# Plot the heatmap
+pdf("~/figures/fuh1/20250502_lymph_proportion.pdf",width=6,height=4.5)
+pheatmap(prop_ordered,
+         cluster_rows = FALSE,
+         cluster_cols = FALSE,
+         annotation_col = annotation_col,
+         annotation_colors = list(Cluster = cluster_colors),
+         show_colnames = FALSE,
+         fontsize_row = 10,
+         scale = "none",
+         main = "",
+         color = hcl.colors(50, "BluYl"))
+dev.off()
+
+### cluster columns 
+
+# Prepare annotation for columns
+cluster_levels <- unique(clusters)
+cluster_colors <- setNames(
+  c("#8A9FD1","#FEE500","#89C75F","#D51F26","#D8A767"),
+  cluster_levels
+)
+
+# Annotation dataframe for columns
+annotation_col <- data.frame(Cluster = clusters)
+rownames(annotation_col) <- colnames(prop_ordered)
+
+# Define annotation with colors
+col_ha <- HeatmapAnnotation(
+  df = annotation_col,
+  col = list(Cluster = cluster_colors),
+  show_annotation_name = TRUE
+)
+
+library(ComplexHeatmap)
+min_val <- min(prop_ordered)
+max_val <- max(prop_ordered)
+# Get all cluster levels you want, in order
+desired_order <- 0:4
+clusters_named <- factor(
+  clusters,
+  levels = desired_order,
+  labels = paste0("Cluster ", desired_order)
+)
+
+pdf("~/figures/fuh1/20250707_lymph_proportion.pdf",width=6,height=4.5)
+Heatmap(
+  as.matrix(prop_ordered),
+  name = "Proportion",
+  top_annotation = col_ha,
+  cluster_rows = FALSE,
+  cluster_columns = TRUE,         # This will cluster within each cluster
+  column_split = clusters_named,        # Split by cluster group
+  column_title = NULL,   
+  show_column_names = FALSE,
+  row_names_gp = gpar(fontsize = 10),
+  col = colorRamp2(
+  seq(min_val, max_val, length.out = 50),
+  hcl.colors(50, "Inferno")
+  ),
+  show_column_dend = FALSE        # Hides the global dendrogram (optional)
+)
+dev.off()
+```
+
+### UXM comparison
+
+./uxm deconv ~/tmp/wgbs_tools/SpMETSLHLN4D/*pat.gz --atlas ./supplemental/Atlas.U25.l4.hg38.tsv -o 20250820_SpMETSLHLN4D_UXM.csv
+
+mkdir -p results
+
+find ~/tmp/wgbs_tools/SpMETSLHLN4D -name '*.pat.gz' | parallel -j 8 '
+  f={};
+  base=$(basename "$f" .pat.gz);
+  ./uxm deconv "$f" \
+    --atlas ~/tmp/UXM_deconv/supplemental/Atlas.U25.l4.hg38.full.tsv \
+    -o results_full/${base}.csv \
+    2> results_full/${base}.log || true
+'
+
+```{r}
+library(tidyverse)
+
+files <- list.files("~/tmp/UXM_deconv/results_full", pattern = "*.csv", full.names = TRUE)
+merged <- files %>%
+  map(function(f) {
+    sample <- tools::file_path_sans_ext(basename(f))
+    read_csv(f, show_col_types = FALSE) %>%
+      rename(!!sample := 2)
+  }) %>%
+  reduce(full_join, by = "CellType")
+zero_cols <- sapply(merged[,-1], function(x) all(x == 0))
+merged_nonzero <- merged[,-1]
+merged_nonzero <- merged_nonzero[,zero_cols==F]
+rownames(merged_nonzero) <- merged$CellType
+
+valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20251020_HLN4D_barcodesK.rds")
+
+
+idx <- match(valid_barcodes,colnames(merged[,-1]))
+df <- merged[,-1]
+idx <- idx[!is.na(idx)]  
+df <- df[,idx]
+
+rownames(df) <- merged$CellType
+
+cell_type <- "Blood-B"
+test <- as.numeric(as.data.frame(df[cell_type,])[1,])
+spatial_plot(test,colnames(df))+labs(color = cell_type)
+ggsave(paste0("~/figures/fuh1/20250820_HLN4_",cell_type,"_uxm.pdf"),width=4.5,height=4)
+# test <- read.table("~/tmp/UXM_deconv/supplemental/Atlas.U25.l4.hg38.full.tsv",header = T)
+# test2 <- read.table("~/tmp/UXM_deconv/supplemental/Atlas.U25.l4.hg38.tsv",header=T)
+```
+
+
+### Human Skin
+
+```{r}
+library(Seurat)
+library(ArchR)
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLHSK08DD/SpMETSLHSK08DD.cg",reference_pattern)
+#valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250430_HLN4D_barcodesK.rds")
+
+
+input_pattern <- input_pattern[rownames(input_pattern) %in% image_barcode,]
+input_pattern <- input_pattern %>% select(-Pna)
+#saveRDS(input_pattern,"~/cell_type/20250423_HLN4_input.rds")
+
+prediction_result <- PredictCellType(training_model,input_pattern,smooth = F)  
+
+
+reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
+
+input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 30)
+reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
+
+# unique_patterns <- sortedFrequency_df %>% filter(unique == "Unique hypomethylated") %>% select(pattern)
+# input_pattern_imputed_filter <- input_pattern_imputed[,unique_patterns[,1]]
+# reference_input_imputed_filter <- reference_input_imputed[,unique_patterns[,1]]
+# cell_proportion_filter <- nnls_deconv(reference_input_imputed_filter,input_pattern_imputed_filter,number_patterns = 62)
+
+cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+input_pattern_imputed <- cbind(input_pattern_imputed,t(cell_proportion))
+
+# all_na_rows <- apply(input_pattern, 1, function(x) all(is.na(x)))
+# input_pattern_filtered <- input_pattern[!all_na_rows, ]
+# input_pattern_imputed <- imputeRowMean(input_pattern_filtered,na_percent = 40)
+
+input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 30)
+input_pattern_imputed <- input_pattern_imputed %>% select(-P1,-P2)
+
+### image barcode
+# input_pattern_imputed <- input_pattern_imputed[rownames(input_pattern_imputed) %in% image_barcode,]
+skin_spatial <- CreateSeuratObject(counts = t(input_pattern_imputed), assay = "DNAm")
+
+assay = "DNAm"
+filter.matrix = TRUE
+slice = "slice1"
+image <- Read10X_Image(image.dir = "/mnt/isilon/zhou_lab/projects/20230531_Spatial_methseq/Spatial/SpMETSLHSK08D/", filter.matrix = filter.matrix)
+
+image_barcodes <- rownames(image@coordinates)
+image_barcodes_fixed <- image_barcodes |>
+  str_replace_all("C", "T") |>
+  (\(x) paste0(substr(x, 9, 16), substr(x, 1, 8)))()
+rownames(image@coordinates) <- image_barcodes_fixed
+
+image <- image[Cells(x = skin_spatial)]
+DefaultAssay(skin_spatial = image) <- assay
+skin_spatial[[slice]] <- image
+
+image_barcode <- rownames(skin_spatial@images$slice1@coordinates)
+
+VariableFeatures(skin_spatial) <- rownames(skin_spatial[['DNAm']])
+DefaultAssay(skin_spatial) <- "DNAm"
+skin_spatial <- NormalizeData(skin_spatial, assay = "DNAm", verbose = FALSE)
+skin_spatial <- ScaleData(skin_spatial, assay = "DNAm", verbose = FALSE)
+#lymph_spatial@assays$DNAm@layers$scale.data <- as.matrix(lymph_spatial@assays$DNAm@layers$counts)
+
+skin_spatial <- RunPCA(skin_spatial,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+skin_spatial <- FindNeighbors(skin_spatial, reduction = "mpca", dims = 1:30)
+skin_spatial <- FindClusters(skin_spatial, verbose = FALSE, resolution = 0.7)
+skin_spatial <- RunUMAP(skin_spatial, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30,n.neighbors = 20)
+
+custom_colors <- c("#8A9FD1","#FEE500","#89C75F","#D51F26","#FFA500","#00FFF0")
+skin_spatial$DNAm_snn_res.0.7 <- paste0("D",skin_spatial$DNAm_snn_res.0.7)
+DimPlot(skin_spatial, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', pt.size = 0.7,alpha = 0.7,cols=custom_colors)  + NoGrid() + ggtitle("")
+ggsave("~/figures/fuh1/20251002_HSK08D_MethScope_umap.pdf",width=3,height=3)
+
+partition <- Idents(skin_spatial)
+prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000,input_pattern,smooth = F)
+prediction_result <- prediction_result[match(colnames(skin_spatial),rownames(prediction_result)),]
+partition <- prediction_result$prediction_label
+partition <- ifelse(partition == "NK CD56",1,0)
+
+spatial_barcode <- colnames(skin_spatial)
+spatial_plot(partition,spatial_barcode) + theme(legend.position = "None") + ggtitle("NK CD56")
+
+
+  scale_color_discrete(
+    labels = c("Alpha cells", "ASC cells", "Type I AT", "Type II AT", "Memory B", "Naive B")
+  ) #+ scale_color_manual(values=custom_colors,na.value="white",na.translate = FALSE,labels = c("D0","D1","D2","D3","D4")) + labs(color ="")
+ggsave("~/figures/fuh1/20251003_HSK08D_MethScope.pdf",width=4.5,height=4)
+
+
+
+cell_type <- "SST"
+test <- cell_proportion[cell_type,]
+spatial_plot(test,names(cell_proportion[cell_type,]))+labs(color = cell_type)
+
 

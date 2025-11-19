@@ -4,7 +4,7 @@
 \alias{nnls_deconv}
 \title{Estimate cell type relative proportion}
 \usage{
-nnls_deconv(ref, mixture_matrix, number_patterns = 1000)
+nnls_deconv(ref, mixture_matrix, number_patterns = 1000, var_threshold = 0.01)
 }
 \arguments{
 \item{ref}{An imputed wide cell by pattern matrix generated from GenerateInput function using reference Pseudobulk}
@@ -12,6 +12,8 @@ nnls_deconv(ref, mixture_matrix, number_patterns = 1000)
 \item{mixture_matrix}{An imputed wide cell by pattern matrix generated from GenerateInput function}
 
 \item{number_patterns}{a numeric value to indicate number of patterns to be used (Default: 1000)}
+
+\item{var_threshold}{a numeric value to indicate variance that should filter the patterns (Default: 0.1)}
 }
 \value{
 A cell type by cell matrix showing the relative cell type proportion estimate for each cells

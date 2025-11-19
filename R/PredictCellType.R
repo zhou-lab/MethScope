@@ -129,17 +129,22 @@ filter_cell <- function(pred_result,knn_res,KNeighbor = 5){
 #' @param ref An imputed wide cell by pattern matrix generated from GenerateInput function using reference Pseudobulk
 #' @param mixture_matrix An imputed wide cell by pattern matrix generated from GenerateInput function
 #' @param number_patterns a numeric value to indicate number of patterns to be used (Default: 1000)
+#' @param var_threshold a numeric value to indicate variance that should filter the patterns (Default: 0.1)
 #' @return A cell type by cell matrix showing the relative cell type proportion estimate for each cells 
 #' @import nnls
 #' @export
 #' 
-nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000) {
+nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000,var_threshold=0.01) {
   ref <- t(ref[,1:number_patterns])
   mixture_matrix <- t(mixture_matrix[,1:number_patterns])
   common_rows <- intersect(rownames(ref), rownames(mixture_matrix))
   ref <- ref[common_rows, , drop = FALSE]
   mixture_matrix <- mixture_matrix[common_rows, , drop = FALSE]
-  mixture_matrix <- mixture_matrix[rownames(ref),]
+  mixture_matrix <- as.matrix(mixture_matrix[rownames(ref),])
+  row_vars_ref <- apply(ref, 1, var)
+  high_var_rows <- names(row_vars_ref[row_vars_ref > var_threshold])
+  ref <- ref[high_var_rows, , drop = FALSE]
+  mixture_matrix <- mixture_matrix[high_var_rows, , drop = FALSE]
   result <- apply(mixture_matrix, 2, function(sample) {
     fit <- nnls(ref, sample)
     prop <- fit$x

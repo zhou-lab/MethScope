@@ -65,7 +65,7 @@ avg_silhouette_score <- mean(sil_100k[, 3])
 print(paste("Average Silhouette Score:", avg_silhouette_score))
 
 DimPlot(Nichols_2022_100K.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 1)  + NoGrid()
-ggsave("~/figures/fuh1/20250213_Nichols_100k.pdf",width=3,height=3)
+#ggsave("~/figures/fuh1/20250213_Nichols_100k.pdf",width=3,height=3)
 ```
 
 ### VMR
@@ -139,7 +139,7 @@ avg_silhouette_score <- mean(sil_MethScope[, 3])
 print(paste("Average Silhouette Score:", avg_silhouette_score))
 
 DimPlot(Nichols_2022_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 1)  + NoGrid()
-ggsave("~/figures/fuh1/20250213_Nichols_MethScope.pdf",width=3,height=3)
+#ggsave("~/figures/fuh1/20250213_Nichols_MethScope.pdf",width=3,height=3)
 ```
 
 ### Plot global m-levels and group on each umap
@@ -225,7 +225,7 @@ ggsave("~/figures/fuh1/20250403_Nichols_Silhouette.pdf",width=3,height=3.5)
 
 ```{r}
 obj_list <- readRDS("~/cell_type/20250227_Nichols_clustering.rds")
-Nichols_2022 <- obj_list[[3]]
+Nichols_2022 <- obj_list[[1]]
 
 prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = T,KNeighbor = 3)
 Nichols_2022$MethScope <- prediction_result$prediction_label
@@ -262,8 +262,110 @@ ordered_clusters <- c(
 )
 cell_order <- names(Nichols_2022$MethScope)[order(factor(Nichols_2022$MethScope, levels = ordered_clusters))]
 
-DimPlot(Nichols_2022, reduction = 'meth.umap', repel = TRUE,cols=custom_colors,group.by = 'MethScope', pt.size = 1,cells=cell_order)  + NoGrid()
-ggsave("~/figures/fuh1/20250306_Nichols_MethScope_supervised.pdf",width=4.5,height=4)
+DimPlot(Nichols_2022, reduction = 'meth.umap', repel = TRUE,cols=custom_colors,group.by = 'MethScope', pt.size = 1,cells=cell_order)  + NoGrid()+ggtitle("")
+ggsave("~/figures/fuh1/20251001_Nichols_100K_supervised.pdf",width=4.5,height=4)
+```
+
+### Marker gene 
+
+yame summary -m /mnt/isilon/zhou_lab/projects/20191221_references/mm10/KYCGKB_mm10/GeneLinks.20220710.cm /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg > ~/intermediate/2022_Nichols_mm10_GeneLink
+
+yame summary -m /mnt/isilon/zhou_lab/projects/20191221_references/mm10/KYCGKB_mm10/GeneLinksEnh.20241127.cm /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg > ~/intermediate/2022_Nichols_mm10_GeneLinksEnh
+
+```{r}
+Nichols_2022_Gene <- read.table("~/intermediate/2022_Nichols_mm10_GeneLinksEnh",sep="\t")          
+colnames(Nichols_2022_Gene) <- Nichols_2022_Gene[1,]
+Nichols_2022_Gene <- Nichols_2022_Gene[-1,]
+Nichols_2022_Gene$Beta <- as.numeric(Nichols_2022_Gene$Beta)
+Nichols_2022_Gene$N_query <- as.numeric(Nichols_2022_Gene$N_query)
+
+Nichols_2022_Gene <- Nichols_2022_Gene %>% dplyr::select('Query','Mask','Beta','N_query')
+Nichols_2022_Gene <- Nichols_2022_Gene %>%
+  tidyr::pivot_wider(
+    names_from = Mask,
+    values_from = Beta,
+    values_fill = list(Beta = NA)
+  )
+Nichols_2022_Gene_query <- Nichols_2022_Gene$Query
+Nichols_2022_Gene <- Nichols_2022_Gene[,-c(1,2)]
+Nichols_2022_Gene <- Nichols_2022_Gene[,-1]
+
+cell_label <- prediction_result$prediction_label
+cell_label <- cell_label[match(Nichols_2022_Gene_query,rownames(prediction_result))]
+mat <- as.matrix(Nichols_2022_Gene)
+mode(mat) <- "numeric"
+labels <- as.factor(cell_label)
+group_levels <- levels(labels)
+avg_by_label <- sapply(unique(cell_label), function(lvl) {
+  colMeans(mat[labels == lvl, , drop = FALSE], na.rm = TRUE)
+})
+
+## Result: rows = genes, cols = labels
+# Optional: remove genes that are all NA after averaging
+keep <- rowSums(!is.na(avg_by_label)) > 0
+avg_by_label <- avg_by_label[keep, , drop = FALSE]
+colnames(avg_by_label) <- unique(cell_label)
+group_levels <- as.character(unique(cell_label))
+marker_list <- lapply(seq_along(group_levels), function(i) {
+  g <- group_levels[i]
+  in_g  <- avg_by_label[, g]
+  out_g <- if (ncol(avg_by_label) == 1) rep(0, nrow(avg_by_label)) else
+             rowMeans(avg_by_label[, setdiff(group_levels, g), drop = FALSE], na.rm = TRUE)
+  delta <- in_g - out_g
+  N <- 20                           # change per your preference
+  min_delta <- 0.15                 # require at least this separation (0–1 scale)
+  pick <- order(delta, decreasing = TRUE)
+  pick <- pick[delta[pick] >= min_delta]
+  head(rownames(avg_by_label)[pick], N)
+})
+names(marker_list) <- group_levels
+markers <- unique(unlist(marker_list))
+
+mat_to_plot <- avg_by_label[intersect(markers, rownames(avg_by_label)), , drop = FALSE]
+mat_to_plot <- mat_to_plot[,colSums(!is.na(mat_to_plot)) > 0]
+  
+  
+## Optional row scaling to emphasize relative differences (comment out if you want raw means)
+# mat_to_plot <- t(scale(t(mat_to_plot)))
+pal <- colorRampPalette(c("#0f0f7d", "#ffffff", "#7d0f0f"))(100)
+pheatmap::pheatmap(
+  mat_to_plot,
+  color = pal,
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  show_rownames = TRUE,
+  show_colnames = TRUE,
+  main = "Marker gene average methylation per cell type",
+  border_color = NA
+)
+
+```
+
+### Check CG overlap
+
+yame unpack -a -f 1 /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg > ~/intermediate/2022_Nichols_mm10_unpack
+
+awk -F'\t' '{
+    c=0
+    for(i=1;i<=NF;i++) if($i != "NA") c++
+    print c
+}' ~/intermediate/2022_Nichols_mm10_unpack > 2022_Nichols_mm10_unpack_counts.txt
+
+```{r}
+library(data.table)
+dt <- fread("~/intermediate/2022_Nichols_mm10_unpack_counts.txt", header = FALSE)
+setnames(dt, "count")
+library(ggplot2)
+
+p <- ggplot(dt, aes(x = count+1)) +
+  geom_histogram(bins = 50, fill = "dodgerblue3", color = "dodgerblue3",limits = c(0, 512)) +
+  scale_x_continuous(trans = "log2") +
+  labs(title = "",
+       x = "# Cells", y = "# of CpGs")+theme_bw()+theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p
+ggsave("~/figures/fuh1/20251008_CellCount.pdf",width=3,height=3)
 ```
 
 ### Pattern umap
@@ -455,3 +557,834 @@ save_meta <- meta_matrix %>%
 # colnames(test_result) <- c("chr","p1","p2","m","um")
 # test_result %>% filter(p1 == 169566882)
 ```
+
+### Hao Wu NBT
+
+### 100kb bin 
+
+yame summary -m ~/SpM/Win100k.20220228.cm /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg > ~/intermediate/2023_Fabyanic_100K
+
+### select cells to be used
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg",reference_pattern)
+
+prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = T)
+
+library(readxl)
+orig_anno <- read_xlsx("~/cell_type/20230829_Fabyanic2023.xlsx")
+orig_anno <- orig_anno[match(rownames(prediction_result),orig_anno$GSM),]
+orig_anno_result <- orig_anno$celltype
+orig_anno_result[is.na(orig_anno_result)] <- orig_anno$sorting[is.na(orig_anno_result)]
+
+cortex_cells <- orig_anno$GSM[which(orig_anno$tissue=="Cortex" & orig_anno$assay=="snmCseq2")]
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(Seurat)
+library(cluster)
+library(ArchR)
+Nichols_2022_100K <- read.table("~/intermediate/2023_Fabyanic_100K",sep="\t")          
+colnames(Nichols_2022_100K) <- Nichols_2022_100K[1,]
+Nichols_2022_100K <- Nichols_2022_100K[-1,]
+Nichols_2022_100K$Beta <- as.numeric(Nichols_2022_100K$Beta)
+Nichols_2022_100K$N_query <- as.numeric(Nichols_2022_100K$N_query)
+
+Nichols_2022_100K <- Nichols_2022_100K %>% dplyr::select('Query','Mask','Beta','N_query')
+Nichols_2022_100K <- Nichols_2022_100K %>% tidyr::spread(key=Mask,value=Beta,fill = NA)
+Nichols_2022_100K_query <- Nichols_2022_100K$Query
+Nichols_2022_100K <- Nichols_2022_100K[,-c(1,2)]
+
+DNAm_matrix <- Nichols_2022_100K
+DNAm_matrix[is.na(DNAm_matrix)] <- 0
+Nichols_2022_100K.obj <- CreateSeuratObject(counts = t(DNAm_matrix), assay = "DNAm")
+colnames(Nichols_2022_100K.obj) <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg.idx")[,1]
+Nichols_2022_100K.obj <- subset(Nichols_2022_100K.obj, cells = cortex_cells)
+VariableFeatures(Nichols_2022_100K.obj) <- rownames(Nichols_2022_100K.obj[['DNAm']])
+#Nichols_2022_100K.obj@assays$DNAm@layers$scale.data <- as.matrix(Nichols_2022_100K.obj@assays$DNAm@layers$counts)
+DefaultAssay(Nichols_2022_100K.obj) <- "DNAm"
+Nichols_2022_100K.obj <- NormalizeData(Nichols_2022_100K.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_100K.obj <- ScaleData(Nichols_2022_100K.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_100K.obj <- RunPCA(Nichols_2022_100K.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Nichols_2022_100K.obj <- FindNeighbors(Nichols_2022_100K.obj, reduction = "mpca", dims = 1:30)
+Nichols_2022_100K.obj <- FindClusters(Nichols_2022_100K.obj, verbose = FALSE, resolution = 0.7)
+Nichols_2022_100K.obj <- RunUMAP(Nichols_2022_100K.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+
+n_clusters <- length(unique(Nichols_2022_100K.obj$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+clustering_labels <- as.integer(Idents(Nichols_2022_100K.obj))
+#embedding_matrix <- Embeddings(Nichols_2022_100K.obj, reduction = "mpca")  # Use PCA
+embedding_matrix <- Embeddings(Nichols_2022_100K.obj, reduction = "meth.umap") # Use UMAP
+sil_100k <- silhouette(clustering_labels, dist(embedding_matrix))
+avg_silhouette_score <- mean(sil_100k[, 3])
+print(paste("Average Silhouette Score:", avg_silhouette_score))
+
+DimPlot(Nichols_2022_100K.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 0.7)  + NoGrid()
+ggsave("~/figures/fuh1/20250624_Fabyanic_100k.pdf",width=3.5,height=3.5)
+```
+
+### VMR
+
+yame unpack -a -f -1 /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg > /home/fuh1/tmp/20240227_test_scbs/2023_Fabyanic
+
+scbs prepare *.cov ../2023_Fabyanic_5mc
+scbs filter --min-sites 10000 --min-meth 0 --max-meth 100 2023_Fabyanic_5mc 2023_Fabyanic_filtered_5mc
+scbs smooth 2023_Fabyanic_filtered_5mc
+scbs scan --threads 8 2023_Fabyanic_filtered_5mc 2023_Fabyanic_5mc.bed
+scbs matrix --threads 8 2023_Fabyanic_5mc.bed 2023_Fabyanic_filtered_5mc 2023_Fabyanic_matrix_5mc
+
+obtain only 5mc cortex cells 
+```{R}
+idx_number <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg.idx")[,1]
+row_numbers <- match(cortex_cells, idx_number)
+file_names <- paste0("cell_",row_numbers-1, ".cov")
+dir.create("~/tmp/20240227_test_scbs/2023_Fabyanic_cov_5mc", showWarnings = FALSE)
+for (f in file_names) {
+  system(paste("cp ~/tmp/20240227_test_scbs/2023_Fabyanic_cov/", f, " ~/tmp/20240227_test_scbs/2023_Fabyanic_cov_5mc/", sep = ""))
+}
+```
+
+
+```{R}
+meth_mtx <- read.csv("/home/fuh1/tmp/20240227_test_scbs/2023_Fabyanic_matrix_5mc/mean_shrunken_residuals.csv.gz", row.names=1) %>% as.matrix()
+DNAm_matrix <- as.data.frame(meth_mtx)
+DNAm_matrix[is.na(DNAm_matrix)] <- 0
+
+Nichols_2022_VMR.obj <- CreateSeuratObject(counts = t(DNAm_matrix), assay = "DNAm")
+VariableFeatures(Nichols_2022_VMR.obj) <- rownames(Nichols_2022_VMR.obj[['DNAm']])
+DefaultAssay(Nichols_2022_VMR.obj) <- "DNAm"
+Nichols_2022_VMR.obj <- NormalizeData(Nichols_2022_VMR.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_VMR.obj <- ScaleData(Nichols_2022_VMR.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_VMR.obj@assays$DNAm@layers$scale.data <- as.matrix(Nichols_2022_VMR.obj@assays$DNAm@layers$counts)
+Nichols_2022_VMR.obj <- RunPCA(Nichols_2022_VMR.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Nichols_2022_VMR.obj <- FindNeighbors(Nichols_2022_VMR.obj, reduction = "mpca", dims = 1:30)
+Nichols_2022_VMR.obj <- FindClusters(Nichols_2022_VMR.obj, verbose = FALSE, resolution = 0.7)
+Nichols_2022_VMR.obj <- RunUMAP(Nichols_2022_VMR.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+n_clusters <- length(unique(Nichols_2022_VMR.obj$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+clustering_labels <- as.integer(Idents(Nichols_2022_VMR.obj))
+
+#embedding_matrix <- Embeddings(Nichols_2022_VMR.obj, reduction = "mpca")  # Use PCA
+embedding_matrix <- Embeddings(Nichols_2022_VMR.obj, reduction = "meth.umap") # Use UMAP
+
+sil_VMR <- silhouette(clustering_labels, dist(embedding_matrix))
+
+avg_silhouette_score <- mean(sil_VMR[, 3])
+print(paste("Average Silhouette Score:", avg_silhouette_score))
+
+DimPlot(Nichols_2022_VMR.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 0.7)  + NoGrid()
+ggsave("~/figures/fuh1/20250624_Fabyanic_VMR.pdf",width=3.5,height=3.5)
+```
+
+### MethScope
+
+```{r}
+Nichols_2022_Pattern.obj_full <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
+Nichols_2022_Pattern.obj <- subset(Nichols_2022_Pattern.obj_full, cells = cortex_cells)
+
+VariableFeatures(Nichols_2022_Pattern.obj) <- rownames(Nichols_2022_Pattern.obj[['DNAm']])
+DefaultAssay(Nichols_2022_Pattern.obj) <- "DNAm"
+Nichols_2022_Pattern.obj <- NormalizeData(Nichols_2022_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_Pattern.obj <- ScaleData(Nichols_2022_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(Nichols_2022_Pattern.obj@assays$DNAm@layers$counts)
+
+Nichols_2022_Pattern.obj <- RunPCA(Nichols_2022_Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Nichols_2022_Pattern.obj <- FindNeighbors(Nichols_2022_Pattern.obj, reduction = "mpca", dims = 1:30)
+Nichols_2022_Pattern.obj <- FindClusters(Nichols_2022_Pattern.obj, verbose = FALSE, resolution = 0.7)
+Nichols_2022_Pattern.obj <- RunUMAP(Nichols_2022_Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+### subset_obj from 20250123 analysis
+Nichols_2022_Pattern.obj@reductions$meth.umap@cell.embeddings <- subset_obj@reductions$meth.umap@cell.embeddings
+n_clusters <- length(unique(Nichols_2022_Pattern.obj$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+
+clustering_labels <- as.integer(Idents(Nichols_2022_Pattern.obj))
+
+#embedding_matrix <- Embeddings(Nichols_2022_100K.obj, reduction = "mpca")  # Use PCA
+embedding_matrix <- Embeddings(Nichols_2022_Pattern.obj, reduction = "meth.umap") # Use UMAP
+
+sil_MethScope <- silhouette(clustering_labels, dist(embedding_matrix))
+
+avg_silhouette_score <- mean(sil_MethScope[, 3])
+print(paste("Average Silhouette Score:", avg_silhouette_score))
+
+DimPlot(Nichols_2022_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 0.7)  + NoGrid()
+ggsave("~/figures/fuh1/20250624_Fabyanic_MethScope.pdf",width=3.5,height=3.5)
+
+#obj_list <- list(Nichols_2022_100K.obj,Nichols_2022_VMR.obj,Nichols_2022_Pattern.obj)
+#saveRDS(obj_list,"~/cell_type/20250624_Wu_clustering.rds")
+```
+
+### Project cluster assignment to 100KB/VMR embeddings
+
+```{r}
+obj_list <- readRDS("~/cell_type/20250624_Wu_clustering.rds")
+Fabyanic_2024_Pattern.obj <- obj_list[[2]]
+
+idx_number <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg.idx")[,1]
+row_numbers <- match(cortex_cells, idx_number)
+file_names <- paste0("cell_",row_numbers-1, ".cov")
+
+GSM_id <- idx_number[row_numbers]
+file_base <- sub("\\.cov$", "", file_names)
+mapping <- setNames(GSM_id, file_base)
+new_colnames <- mapping[colnames(Fabyanic_2024_Pattern.obj)]
+
+colnames(Fabyanic_2024_Pattern.obj) <- as.character(new_colnames)
+
+prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = T)
+prediction_result <- prediction_result[match(colnames(Fabyanic_2024_Pattern.obj),rownames(prediction_result)),]
+
+Fabyanic_2024_Pattern.obj$MethScope <- prediction_result$prediction_label
+
+
+library(readxl)
+orig_anno <- read_xlsx("~/cell_type/20230829_Fabyanic2023.xlsx")
+orig_anno <- orig_anno[match(rownames(prediction_result),orig_anno$GSM),]
+orig_anno_result <- orig_anno$celltype
+orig_anno_result[is.na(orig_anno_result)] <- orig_anno$sorting[is.na(orig_anno_result)]
+
+Fabyanic_2024_Pattern.obj$orig_annotation <- orig_anno_result
+n_clusters <- length(unique(Fabyanic_2024_Pattern.obj$orig_annotation))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+cell_order <- names(Fabyanic_2024_Pattern.obj$orig_annotation)[order(factor(Fabyanic_2024_Pattern.obj$orig_annotation))]
+
+cortex_cells <- orig_anno$GSM[which(orig_anno$tissue=="Cortex" & orig_anno$assay=="snmCseq2")]
+
+subset_obj <- subset(Fabyanic_2024_Pattern.obj, cells = cortex_cells)
+
+subset_obj$orig_annotation <- dplyr::recode(
+  subset_obj$orig_annotation,
+  "Ex" = "Ex neuron (NeuN⁺/Neurod6⁺)",
+  "Inh" = "Inh neuron (NeuN⁺/Neurod6⁻)",
+  "NeuN_pos" = "Pan-neuronal (NeuN⁺)",
+  "NeuN_neg" = "Nonneuronal (NeuN⁻)"
+)
+
+n_clusters <- length(unique(Fabyanic_2024_Pattern.obj$orig_annotation))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+
+ordered_clusters <- c(
+ "Pan-neuronal (NeuN⁺)",
+ "Inh neuron (NeuN⁺/Neurod6⁻)","Ex neuron (NeuN⁺/Neurod6⁺)","Nonneuronal (NeuN⁻)"
+)
+cell_order <- names(subset_obj$orig_annotation)[order(factor(subset_obj$orig_annotation, levels = ordered_clusters))]
+
+
+p1 <- DimPlot(subset_obj, reduction = 'meth.umap', repel = TRUE,group.by = 'orig_annotation', pt.size = 0.7,cols=cols,cells=cell_order)  + NoGrid() + ggtitle("")
+p1
+ggsave("~/figures/fuh1/20251113_Wu_VMR_orig.pdf",width=6.5,height=5)
+
+n_clusters <- length(unique(subset_obj$MethScope))
+cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+
+p2 <- DimPlot(subset_obj, reduction = 'meth.umap', repel = TRUE,group.by = 'MethScope', pt.size = 0.7,cols=cols)  + NoGrid()
+p2
+ggsave("~/figures/fuh1/20251113_Wu_VMR_supervised.pdf",width=5.5,height=5)
+
+```
+
+
+
+### Across all the single cell datasets
+
+```{r}
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+cg_files <- list.files(
+  path = "/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/",
+  pattern = "\\.cg$",
+  full.names = TRUE
+)
+input_patterns <- list()
+cg_files <- cg_files[-c(15,17,18)]
+for (f in cg_files) {
+  res <- GenerateInput(f,reference_pattern)
+  input_patterns[[basename(f)]] <- res
+}
+#saveRDS(input_patterns, "~/cell_type/20250821_single_cell_mouse.rds")
+
+input_patterns <- readRDS("~/cell_type/20250821_single_cell_mouse.rds")
+
+
+for (pattern_name in names(input_patterns)) {
+  input_pattern <- input_patterns[[pattern_name]]
+  ### for 5hmc containing matrix
+  #input_pattern <- input_pattern[grepl("(?<!h)mC$", rownames(input_pattern), perl = TRUE), ]
+  input_pattern <- imputeRowMean(input_pattern,na_percent = 30)
+  if(nrow(input_pattern) < 50){next}
+  print(paste0("plotting ",pattern_name))
+  single_cell_pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
+  VariableFeatures(single_cell_pattern.obj) <- rownames(single_cell_pattern.obj[['DNAm']])
+  DefaultAssay(single_cell_pattern.obj) <- "DNAm"
+  single_cell_pattern.obj <- NormalizeData(single_cell_pattern.obj, assay = "DNAm", verbose = FALSE)
+  single_cell_pattern.obj <- ScaleData(single_cell_pattern.obj, assay = "DNAm", verbose = FALSE)
+  single_cell_pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(single_cell_pattern.obj@assays$DNAm@layers$counts)
+  single_cell_pattern.obj <- RunPCA(single_cell_pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+  dim <- ifelse(dim(single_cell_pattern.obj@reductions$mpca)[2]>30,30,dim(single_cell_pattern.obj@reductions$mpca)[2])
+  single_cell_pattern.obj <- FindNeighbors(single_cell_pattern.obj, reduction = "mpca", dims = 1:dim)
+  single_cell_pattern.obj <- FindClusters(single_cell_pattern.obj, verbose = FALSE, resolution = 0.5)
+  single_cell_pattern.obj <- RunUMAP(single_cell_pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:dim)
+  n_clusters <- length(unique(single_cell_pattern.obj$DNAm_snn_res.0.5))
+  cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+  clustering_labels <- as.integer(Idents(single_cell_pattern.obj))
+  DimPlot(single_cell_pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.5', cols = cols, pt.size = 0.7,) + NoGrid()+ ggtitle(gsub(".cg","",pattern_name))
+  ggsave(paste0("~/figures/fuh1/20250911_",gsub(".cg","",pattern_name),".pdf"),width=3.5,height=3.5)
+}
+
+```
+
+### 2019 Argelaquet
+
+yame dsample -s 1 -N 300000 /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2019_Argelaguet.cg > ~/intermediate/2019_Argelaguet_dsample.cg
+
+yame summary -m ~/SpM/Win100k.20220228.cm /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2019_Argelaguet.cg > ~/intermediate/2019_Argelaquet_mm10_100K
+
+yame summary -m ~/SpM/Win100k.20220228.cm ~/intermediate/2019_Argelaguet_dsample.cg > ~/intermediate/2019_Argelaquet_mm10_100K_dsample
+
+```{r}
+input_pattern <- input_patterns[["2019_Argelaguet.cg"]]
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/intermediate/2019_Argelaguet_dsample.cg",reference_pattern)
+input_pattern <- imputeRowMean(input_pattern,na_percent = 30)
+rownames(input_pattern) <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2019_Argelaguet.cg.idx")[,1]
+GSM_id <- gsub("_.*","",rownames(input_pattern))
+library(GEOquery)
+gse <- getGEO("GSE121690", GSEMatrix = TRUE)[[1]]
+pd  <- pData(gse)
+input_pattern <- input_pattern[GSM_id %in% pd$geo_accession,]
+pd <- pd[match(GSM_id,pd$geo_accession),]
+time_stage <- pd$characteristics_ch1.1
+clean_stage <- sub("developmental stage: ", "", time_stage)
+
+single_cell_pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
+VariableFeatures(single_cell_pattern.obj) <- rownames(single_cell_pattern.obj[['DNAm']])
+DefaultAssay(single_cell_pattern.obj) <- "DNAm"
+single_cell_pattern.obj <- NormalizeData(single_cell_pattern.obj, assay = "DNAm", verbose = FALSE)
+single_cell_pattern.obj <- ScaleData(single_cell_pattern.obj, assay = "DNAm", verbose = FALSE)
+single_cell_pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(single_cell_pattern.obj@assays$DNAm@layers$counts)
+single_cell_pattern.obj <- RunPCA(single_cell_pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+dim <- ifelse(dim(single_cell_pattern.obj@reductions$mpca)[2]>30,30,dim(single_cell_pattern.obj@reductions$mpca)[2])
+single_cell_pattern.obj <- FindNeighbors(single_cell_pattern.obj, reduction = "mpca", dims = 1:dim)
+single_cell_pattern.obj <- FindClusters(single_cell_pattern.obj, verbose = FALSE, resolution = 0.5)
+single_cell_pattern.obj <- RunUMAP(single_cell_pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:20)
+n_clusters <- length(unique(single_cell_pattern.obj$DNAm_snn_res.0.5))
+cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+clustering_labels <- as.integer(Idents(single_cell_pattern.obj))
+sce <- as.SingleCellExperiment(single_cell_pattern.obj)
+reducedDim(sce, "mpca") <- Seurat::Embeddings(single_cell_pattern.obj, "mpca")
+sce <- slingshot(sce, reducedDim = "mpca" #, clusterLabels = single_cell_pattern.obj$DNAm_snn_res.0.7
+)
+# Get a single lineage (or pick one) and rescale to [0,1]
+pt <- slingPseudotime(sce)
+pt1 <- pt[,1]
+pt1 <- (pt1 - min(pt1, na.rm=TRUE)) / diff(range(pt1, na.rm=TRUE))
+single_cell_pattern.obj$pt_sls <- pt1
+single_cell_pattern.obj$pt_sls <- 1 - single_cell_pattern.obj$pt_sls
+
+p1 <- DimPlot(single_cell_pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.5', cols = cols, pt.size = 0.7) + NoGrid()+ ggtitle("Alcheme embedding")
+single_cell_pattern.obj$annotation <- clean_stage
+p2 <- DimPlot(single_cell_pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'annotation', cols = cols, pt.size = 0.7) + NoGrid()+scale_color_viridis_d(option="plasma")+ggtitle("Argelaguet 2019")
+p3 <- FeaturePlot(single_cell_pattern.obj, reduction = 'meth.umap', repel = TRUE, features = 'pt_sls', pt.size = 0.7) + NoGrid()+ggtitle("Alcheme Pseudotime")+ scale_color_distiller(palette = "YlOrBr",direction = 1)
+p2+p1+p3
+ggsave("~/figures/fuh1/20250825_2019Arg_alcheme.pdf",width=10.5,height=3.5)
+
+Arg_mm10_100K <- read.table("~/intermediate/2019_Argelaquet_mm10_100K_dsample",sep="\t")          
+colnames(Arg_mm10_100K) <- Arg_mm10_100K[1,]
+Arg_mm10_100K <- Arg_mm10_100K[-1,]
+Arg_mm10_100K$Beta <- as.numeric(Arg_mm10_100K$Beta)
+Arg_mm10_100K$N_query <- as.numeric(Arg_mm10_100K$N_query)
+Arg_mm10_100K <- Arg_mm10_100K %>% dplyr::select('Query','Mask','Beta','N_query')
+Arg_mm10_100K <- Arg_mm10_100K %>% tidyr::spread(key=Mask,value=Beta,fill = NA)
+rownames(Arg_mm10_100K) <- Arg_mm10_100K$Query
+Arg_mm10_100K <- Arg_mm10_100K[,-c(1,2)]
+DNAm_matrix = imputeRowMean(Arg_mm10_100K)
+rownames(Arg_mm10_100K) <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2019_Argelaguet.cg.idx")[,1]
+rownames(DNAm_matrix) <- rownames(Arg_mm10_100K)
+
+GSM_id <- gsub("_.*","",rownames(DNAm_matrix))
+DNAm_matrix <- DNAm_matrix[GSM_id %in% pd$geo_accession,]
+Arg_mm10_100K <- CreateSeuratObject(counts = t(DNAm_matrix), assay = "DNAm")
+VariableFeatures(Arg_mm10_100K) <- rownames(Arg_mm10_100K[['DNAm']])
+DefaultAssay(Arg_mm10_100K) <- "DNAm"
+Arg_mm10_100K <- NormalizeData(Arg_mm10_100K, assay = "DNAm", verbose = FALSE)
+Arg_mm10_100K <- ScaleData(Arg_mm10_100K, assay = "DNAm", verbose = FALSE)
+Arg_mm10_100K <- RunPCA(Arg_mm10_100K,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Arg_mm10_100K <- FindNeighbors(Arg_mm10_100K, reduction = "mpca", dims = 1:30)
+Arg_mm10_100K <- FindClusters(Arg_mm10_100K, verbose = FALSE, resolution = 0.7)
+Arg_mm10_100K <- RunUMAP(Arg_mm10_100K, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:20)
+
+sce <- as.SingleCellExperiment(Arg_mm10_100K)
+reducedDim(sce, "mpca") <- Seurat::Embeddings(Arg_mm10_100K, "mpca")
+sce <- slingshot(sce, reducedDim = "mpca" #, clusterLabels = Gu_mm10_100K.obj$DNAm_snn_res.0.7,
+)
+pt <- slingPseudotime(sce)
+pt1 <- pt[,1]
+pt1 <- (pt1 - min(pt1, na.rm=TRUE)) / diff(range(pt1, na.rm=TRUE))
+Arg_mm10_100K$pt_sls <- pt1
+Arg_mm10_100K$pt_sls <- 1 - Arg_mm10_100K$pt_sls
+
+n_clusters <- length(unique(Arg_mm10_100K$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+p4<- DimPlot(Arg_mm10_100K, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 0.7)  + NoGrid()+ggtitle("100KB-bins")
+Arg_mm10_100K$annotation <- clean_stage
+p5 <- DimPlot(Arg_mm10_100K, reduction = 'meth.umap', repel = TRUE, group.by = 'annotation', cols = cols, pt.size = 0.7) + NoGrid()+scale_color_viridis_d(option="plasma")+ggtitle("Argelaguet 2019")
+p6 <- FeaturePlot(Arg_mm10_100K, reduction = 'meth.umap', repel = TRUE, features = 'pt_sls', pt.size = 0.7) + NoGrid()+ggtitle("100KB Pseudotime")+ scale_color_distiller(palette = "YlOrBr",direction = 1)
+p5+p4+p6
+ggsave("~/figures/fuh1/20250825_2019Arg_100k.pdf",width=10.5,height=3.5)
+```
+
+### 2018 Gu
+
+yame dsample -s 1 -N 300000 /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2019_Gu.cg > ~/intermediate/2019_Gu_dsample.cg
+yame summary -m ~/SpM/Win100k.20220228.cm /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2019_Gu.cg > ~/intermediate/2019_Gu_mm10_100K
+yame summary -m ~/SpM/Win100k.20220228.cm ~/intermediate/2019_Gu_dsample.cg > ~/intermediate/2019_Gu_mm10_100K_dsample
+
+```{r}
+library(SingleCellExperiment)
+library(slingshot)
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/intermediate/2019_Gu_dsample.cg",reference_pattern)
+input_pattern <- imputeRowMean(input_pattern,na_percent = 30)
+meta <- read_xlsx("~/cell_type/20220313_2019_Gu.xlsx")
+rownames(input_pattern) <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2019_Gu.cg.idx")[,1]
+meta <- meta[match(rownames(input_pattern),meta$sampleName),]
+cell_cluster <- gsub("_.*","",meta$Cell_ID)
+
+single_cell_pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
+VariableFeatures(single_cell_pattern.obj) <- rownames(single_cell_pattern.obj[['DNAm']])
+DefaultAssay(single_cell_pattern.obj) <- "DNAm"
+single_cell_pattern.obj <- NormalizeData(single_cell_pattern.obj, assay = "DNAm", verbose = FALSE)
+single_cell_pattern.obj <- ScaleData(single_cell_pattern.obj, assay = "DNAm", verbose = FALSE)
+single_cell_pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(single_cell_pattern.obj@assays$DNAm@layers$counts)
+single_cell_pattern.obj <- RunPCA(single_cell_pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+
+dim <- ifelse(dim(single_cell_pattern.obj@reductions$mpca)[2]>30,30,dim(single_cell_pattern.obj@reductions$mpca)[2])
+single_cell_pattern.obj <- FindNeighbors(single_cell_pattern.obj, reduction = "mpca", dims = 1:dim)
+single_cell_pattern.obj <- FindClusters(single_cell_pattern.obj, verbose = FALSE, resolution = 0.7)
+single_cell_pattern.obj <- RunUMAP(single_cell_pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:dim)
+n_clusters <- length(unique(single_cell_pattern.obj$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "alphabet", shuffle = FALSE)
+clustering_labels <- as.integer(Idents(single_cell_pattern.obj))
+
+sce <- as.SingleCellExperiment(single_cell_pattern.obj)
+reducedDim(sce, "mpca") <- Seurat::Embeddings(single_cell_pattern.obj, "mpca")
+sce <- slingshot(sce, reducedDim = "mpca" #, clusterLabels = single_cell_pattern.obj$DNAm_snn_res.0.7
+)
+# Get a single lineage (or pick one) and rescale to [0,1]
+pt <- slingPseudotime(sce)
+pt1 <- pt[,1]
+pt1 <- (pt1 - min(pt1, na.rm=TRUE)) / diff(range(pt1, na.rm=TRUE))
+single_cell_pattern.obj$pt_sls <- pt1
+
+p1 <- DimPlot(single_cell_pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 0.7) + NoGrid()+ ggtitle("Alcheme")
+single_cell_pattern.obj$annotation <- cell_cluster
+p2 <- DimPlot(single_cell_pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'annotation', cols = cols, pt.size = 0.7) + NoGrid()+scale_color_viridis_d(option="plasma")+ggtitle("Gu 2019 mouse oocytes")
+p3 <- FeaturePlot(single_cell_pattern.obj, reduction = 'meth.umap', repel = TRUE, features = 'pt_sls', pt.size = 0.7) + NoGrid()+ggtitle("Alcheme Pseudotime")+ scale_color_distiller(palette = "YlOrBr",direction = 1)
+
+Gu_mm10_100K <- read.table("~/intermediate/2019_Gu_mm10_100K_dsample",sep="\t")          
+colnames(Gu_mm10_100K) <- Gu_mm10_100K[1,]
+Gu_mm10_100K <- Gu_mm10_100K[-1,]
+Gu_mm10_100K$Beta <- as.numeric(Gu_mm10_100K$Beta)
+Gu_mm10_100K$N_query <- as.numeric(Gu_mm10_100K$N_query)
+Gu_mm10_100K <- Gu_mm10_100K %>% dplyr::select('Query','Mask','Beta','N_query')
+Gu_mm10_100K <- Gu_mm10_100K %>% tidyr::spread(key=Mask,value=Beta,fill = NA)
+rownames(Gu_mm10_100K) <- Gu_mm10_100K$Query
+Gu_mm10_100K <- Gu_mm10_100K[,-c(1,2)]
+
+DNAm_matrix = imputeRowMean(Gu_mm10_100K)
+rownames(DNAm_matrix) <- rownames(Gu_mm10_100K)
+Gu_mm10_100K.obj <- CreateSeuratObject(counts = t(DNAm_matrix), assay = "DNAm")
+VariableFeatures(Gu_mm10_100K.obj) <- rownames(Gu_mm10_100K.obj[['DNAm']])
+DefaultAssay(Gu_mm10_100K.obj) <- "DNAm"
+Gu_mm10_100K.obj <- NormalizeData(Gu_mm10_100K.obj, assay = "DNAm", verbose = FALSE)
+Gu_mm10_100K.obj <- ScaleData(Gu_mm10_100K.obj, assay = "DNAm", verbose = FALSE)
+Gu_mm10_100K.obj <- RunPCA(Gu_mm10_100K.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+
+
+Gu_mm10_100K.obj <- FindNeighbors(Gu_mm10_100K.obj, reduction = "mpca", dims = 1:30)
+Gu_mm10_100K.obj <- FindClusters(Gu_mm10_100K.obj, verbose = FALSE, resolution = 0.7)
+Gu_mm10_100K.obj <- RunUMAP(Gu_mm10_100K.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+
+sce <- as.SingleCellExperiment(Gu_mm10_100K.obj)
+reducedDim(sce, "mpca") <- Seurat::Embeddings(Gu_mm10_100K.obj, "mpca")
+sce <- slingshot(sce, reducedDim = "mpca" #, clusterLabels = Gu_mm10_100K.obj$DNAm_snn_res.0.7,
+)
+pt <- slingPseudotime(sce)
+pt1 <- pt[,1]
+pt1 <- (pt1 - min(pt1, na.rm=TRUE)) / diff(range(pt1, na.rm=TRUE))
+Gu_mm10_100K.obj$pt_sls <- pt1
+
+n_clusters <- length(unique(Gu_mm10_100K.obj$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+p4 <- DimPlot(Gu_mm10_100K.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 0.7)  + NoGrid()+ggtitle("100KB-bins")
+Gu_mm10_100K.obj$annotation <- cell_cluster
+p5 <- DimPlot(Gu_mm10_100K.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'annotation', cols = cols, pt.size = 0.7) + NoGrid()+scale_color_viridis_d(option="plasma")+ggtitle("Gu 2019 mouse oocytes")
+p6 <- FeaturePlot(Gu_mm10_100K.obj, reduction = 'meth.umap', repel = TRUE, features = 'pt_sls', pt.size = 0.7) + NoGrid()+ggtitle("100KB Pseudotime")+ scale_color_distiller(palette = "YlOrBr",direction = 1)
+
+p5+p4+p6
+ggsave("~/figures/fuh1/20250825_2019GU_100k.pdf",width=10.5,height=3.5)
+p2+p1+p3
+ggsave("~/figures/fuh1/20250825_2019GU_MethScope.pdf",width=10.5,height=3.5)
+```
+
+### Supervised annotation
+
+```{r}
+Simple_seq <- input_patterns[["2024_Zhu_SIMPLEseq_brain.cg"]]
+input_pattern <- Simple_seq[grepl("(?<!h)mC$", rownames(Simple_seq), perl = TRUE), ]
+prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = F)
+prediction_result <- prediction_result %>% dplyr::filter(confidence_score > 0.5)
+library(readxl)
+reference_meta <- read_xlsx("~/cell_type/SIMPLE_SEQ.xlsx")
+colnames(reference_meta) <- reference_meta[1,]
+reference_meta <- reference_meta[-1,]
+reference_meta$Cell_ID <- gsub(":","_",reference_meta$Cell_ID)
+rownames(prediction_result) <- gsub("_mC","",rownames(prediction_result))
+reference_meta <- reference_meta[match(rownames(prediction_result),reference_meta$Cell_ID),]
+
+Original <- as.character(reference_meta$L2_annotation)
+Predicted <- as.character(prediction_result$prediction_label)
+tab <- table(Original, Predicted)   
+
+mat_counts <- as.matrix(tab)                 
+mat_rowpct <- prop.table(tab, margin = 1)    
+mat_colpct <- prop.table(tab, margin = 2)    
+library(pheatmap)
+library(RColorBrewer)
+
+#pdf("~/figures/fuh1/20251008_Haowu_prediction.pdf",width=8.5,height=3)
+pheatmap(
+  mat_rowpct,                               
+  color = colorRampPalette(brewer.pal(9, "YlGnBu"))(100),
+  cluster_rows = FALSE,                       
+  cluster_cols = FALSE,
+  main = "",
+  fontsize_number = 7.5,
+  angle_col = 45,
+  border_color = "black"
+)
+#dev.off()
+```
+
+
+
+### Iterative clustering result test
+
+```{r}
+Nichols_2022_100K <- read.table("~/intermediate/2022_Nichols_mm10_100K",sep="\t")          
+colnames(Nichols_2022_100K) <- Nichols_2022_100K[1,]
+Nichols_2022_100K <- Nichols_2022_100K[-1,]
+Nichols_2022_100K$Beta <- as.numeric(Nichols_2022_100K$Beta)
+Nichols_2022_100K$N_query <- as.numeric(Nichols_2022_100K$N_query)
+
+Nichols_2022_100K <- Nichols_2022_100K %>% dplyr::select('Query','Mask','Beta','N_query')
+Nichols_2022_100K <- Nichols_2022_100K %>% tidyr::spread(key=Mask,value=Beta,fill = NA)
+Nichols_2022_100K_query <- Nichols_2022_100K$Query
+Nichols_2022_100K <- Nichols_2022_100K[,-c(1,2)]
+
+imputeRowMean <- function(mtx) {
+  na_percentage <- sapply(mtx, function(x) sum(is.na(x)) / length(x)) * 100
+  mtx <- mtx[, na_percentage < 70]
+  k <- which(is.na(mtx), arr.ind=TRUE)
+  mtx[k] <- rowMeans(mtx, na.rm=TRUE)[k[,1]]
+  mtx
+}
+
+DNAm_matrix = imputeRowMean(Nichols_2022_100K)
+rownames(DNAm_matrix) <- rownames(Nichols_2022_100K)
+Nichols_2022_100K.obj <- CreateSeuratObject(counts = t(DNAm_matrix), assay = "DNAm")
+VariableFeatures(Nichols_2022_100K.obj) <- rownames(Nichols_2022_100K.obj[['DNAm']])
+#Nichols_2022_100K.obj@assays$DNAm@layers$scale.data <- as.matrix(Nichols_2022_100K.obj@assays$DNAm@layers$counts)
+DefaultAssay(Nichols_2022_100K.obj) <- "DNAm"
+Nichols_2022_100K.obj <- NormalizeData(Nichols_2022_100K.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_100K.obj <- ScaleData(Nichols_2022_100K.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_100K.obj <- RunPCA(Nichols_2022_100K.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Nichols_2022_100K.obj <- FindNeighbors(Nichols_2022_100K.obj, reduction = "mpca", dims = 1:30)
+Nichols_2022_100K.obj <- FindClusters(Nichols_2022_100K.obj, verbose = FALSE, resolution = 1)
+Nichols_2022_100K.obj <- RunUMAP(Nichols_2022_100K.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+n_clusters <- length(unique(Nichols_2022_100K.obj$DNAm_snn_res.1))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+
+DimPlot(Nichols_2022_100K.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.1', cols = cols, pt.size = 1)  + NoGrid()
+#ggsave("~/figures/fuh1/test.pdf",width=3,height=3)
+
+for (i in levels(Nichols_2022_100K.obj$DNAm_snn_res.1)){
+  sample_name_idx <- which(Nichols_2022_100K.obj$DNAm_snn_res.1 == i)
+  sample_name <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg.idx")[,1]
+  sample_name <- sample_name[sample_name_idx]
+  write.table(as.character(sample_name),"~/intermediate/20250827_iterative/sample_name.txt",quote=F,row.names = F,col.names = F)
+  text <- paste0("yame subset -l ~/intermediate/20250827_iterative/sample_name.txt /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg | yame rowop -o musum - ~/intermediate/20250827_iterative/",i,".cg")
+  system(text)
+}
+
+Nichols_2022_100K.obj <- FindNeighbors(Nichols_2022_100K.obj, reduction = "mpca", dims = 1:30,k.param = 60,return.neighbor = TRUE)
+nn <- Nichols_2022_100K.obj@neighbors$DNAm.nn
+neighbor_matrix <- nn@nn.idx
+### get random neighbors
+iterative_list <- sample(1:491,size=9)
+for (i in iterative_list){
+  cell_of_interest <- as.character(i)  
+  cell_index <- which(colnames(Nichols_2022_100K.obj) == cell_of_interest)
+  neighbors_60 <- neighbor_matrix[cell_index, 1:60] 
+  neighbor_cells <- colnames(Nichols_2022_100K.obj)[neighbors_60]
+  neighbor_cells <- as.numeric(neighbor_cells)
+  neighbor_cells <- c(neighbor_cells,i)
+  sample_name <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg.idx")[,1]
+  sample_name <- sample_name[neighbor_cells]
+  write.table(as.character(sample_name),"~/intermediate/20250827_iterative/sample_name.txt",quote=F,row.names = F,col.names = F)
+  text <- paste0("yame subset -l ~/intermediate/20250827_iterative/sample_name.txt /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg | yame rowop -o musum - ~/intermediate/20250827_iterative/",i,".cg")
+  system(text)
+}
+#mergeCG2 ~/intermediate/20250827_iterative/tmp_cpg ~/intermediate/20250827_iterative/tmp_cpg.cg
+#yame rowop -o binstring ./tmp_cpg.cg > ./tmp_cpg_b
+
+GenerateReference(binary_file = "~/intermediate/20250827_iterative/tmp_cpg_b",min_CG = 50,output_path = "~/intermediate/20250827_iterative/patterns.txt")
+
+### original 500 cg separation
+# yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Liu2021_MouseBrain.cm > ~/intermediate/20250827_iterative/Liu2021_MouseBrain.txt
+
+reference <- read.table("~/intermediate/20250827_iterative/Liu2021_MouseBrain.txt")
+ix <- ave(seq_len(nrow(reference)), reference$V1, FUN = function(i) (seq_along(i) - 1) %/% 4000)
+reference$V1 <- ifelse(ix == 0, reference$V1, paste0(reference$V1, "_", ix))
+write.table(reference$V1,"~/intermediate/20250827_iterative/Liu2021_MouseBrain_update.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+#yame pack -f s ./patterns.txt ./patterns.cm
+
+reference_pattern <- "/home/fuh1/intermediate/20250827_iterative/patterns.cm"
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg",reference_pattern)
+DNAm_matrix = imputeRowMean(input_pattern)
+rownames(DNAm_matrix) <- rownames(input_pattern)
+
+Nichols_2022_Pattern.obj <- CreateSeuratObject(counts = t(DNAm_matrix), assay = "DNAm")
+VariableFeatures(Nichols_2022_Pattern.obj) <- rownames(Nichols_2022_Pattern.obj[['DNAm']])
+DefaultAssay(Nichols_2022_Pattern.obj) <- "DNAm"
+Nichols_2022_Pattern.obj <- NormalizeData(Nichols_2022_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_Pattern.obj <- ScaleData(Nichols_2022_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Nichols_2022_Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(Nichols_2022_Pattern.obj@assays$DNAm@layers$counts)
+
+Nichols_2022_Pattern.obj <- RunPCA(Nichols_2022_Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Nichols_2022_Pattern.obj <- FindNeighbors(Nichols_2022_Pattern.obj, reduction = "mpca", dims = 1:30)
+Nichols_2022_Pattern.obj <- FindClusters(Nichols_2022_Pattern.obj, verbose = FALSE, resolution = 0.7)
+Nichols_2022_Pattern.obj <- RunUMAP(Nichols_2022_Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+n_clusters <- length(unique(Nichols_2022_Pattern.obj$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+
+clustering_labels <- as.integer(Idents(Nichols_2022_Pattern.obj))
+Nichols_2022_Pattern.obj$label_old <- as.character(Nichols_2022_100K.obj$DNAm_snn_res.1)
+
+DimPlot(Nichols_2022_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'DNAm_snn_res.0.7', cols = cols, pt.size = 1)  + NoGrid()+ggtitle("")
+ggsave("~/figures/fuh1/20250903_Nichols_MethScope_testold_random.pdf",width=3,height=3)
+```
+
+### Check VMR consistency
+
+```{r}
+library(readxl)
+library(dplyr)
+meta_updated <- read.table("~/cell_type/20250425_eckerhuman.tsv",sep="\t")
+t_cells <- meta_updated %>% filter(label %in% c("Tmem CD4","Tmem CD8","Tnaive CD4","Tnaive CD4")) %>% sample_n(50)
+fibro_cells <- meta_updated %>% filter(label %in% c("Fibro Adr","Fibro EpiN","Fibro HT","Fibro Brst","Fibro Sk")) %>% sample_n(50)
+simulated_cells <- bind_rows(t_cells, fibro_cells)
+output_sample <- simulated_cells$cell
+write.table(output_sample,"~/cell_type/20251009_Zhou_simu.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+text <- "yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/hg38/2025_Zhou.cg -l ~/cell_type/20251009_Zhou_simu.txt >  ~/intermediate/20251009_Zhou_simu.cg"
+system(text)
+```
+
+yame unpack -a -f -1 ~/intermediate/20251009_Zhou_simu.cg > ~/intermediate/20251009_Zhou_simu
+
+sbatch CG2COV.sh
+sbatch Nichols_filterNA.sh
+
+methscan prepare *.cov ../20251014_Zhou_1024_cov
+methscan filter --min-sites 1000 --min-meth 0 --max-meth 100 20251014_Zhou_1024_cov 20251014_Zhou_1024_filtered
+methscan smooth 20251014_Zhou_1024_filtered
+methscan scan --threads 8 20251014_Zhou_1024_filtered 20251014_Zhou_1024.bed
+methscan matrix --threads 8 20251014_Zhou_1024.bed 20251014_Zhou_1024_filtered 20251014_Zhou_1024_matrix
+
+yame dsample -s 1 -N 1024 ~/intermediate/20251009_Zhou_simu.cg | yame unpack -a -f -1 - > ~/intermediate/20251009_Zhou_simu_1024
+
+```{r}
+base_dir <- "/home/fuh1/tmp/20240227_test_scbs"
+sizes <- 2^(10:17)
+results <- data.frame(size = integer(), ncol = integer())
+for (s in sizes) {
+  file_path <- file.path(base_dir, sprintf("20251020_Zhou_%d_matrix", s), "methylation_fractions.csv.gz")
+  if (file.exists(file_path)) {
+    cat("Reading:", file_path, "\n")
+    meth_mtx <- read.csv(file_path, row.names = 1) %>% as.matrix()
+    results <- rbind(results, data.frame(size = s, ncol = ncol(meth_mtx)))
+  } else {
+    warning(sprintf("File not found: %s", file_path))
+  }
+}
+
+meth_mtx <- read.csv("/home/fuh1/tmp/20240227_test_scbs/20251014_Zhou_matrix/methylation_fractions.csv.gz", row.names = 1) %>% as.matrix()
+results <- rbind(results,c("Original",ncol(meth_mtx)))
+results$size <- factor(results$size,levels=as.character(results$size))
+results$ncol <- as.numeric(results$ncol)
+
+ggplot(results, aes(x = size, y = ncol)) +
+  geom_point(size = 3) +
+  geom_line() +
+  labs(
+    title = "",
+    x = "#CpGs covered",
+    y = "Number of VMRs"
+  ) +
+  theme_bw(base_size = 11)+theme(panel.grid.background = element_blank(),
+                   panel.grid.major = element_blank(),
+                   panel.grid.minor = element_blank(),
+                   axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5))
+ggsave("~/figures/fuh1/20251022_VMR.pdf",width=3,height=3)
+```
+
+### GSE186888_WBC sex embedding
+
+yame subset -l ~/intermediate/20251107_GSE186888_WBC.txt 20251106_GSE186888_WBC_WGBS.cg > ~/intermediate/20251107_GSE186888_WBC.cg
+yame rowop ~/intermediate/20251107_GSE186888_WBC.cg -o binstring > ~/intermediate/20251107_GSE186888_WBC_binstring
+./GenerateReference.R ~/intermediate/20251107_GSE186888_WBC_binstring 
+yame pack -f s ~/intermediate/20251107_GSE186888_WBC_patterns.txt ~/intermediate/20251107_GSE186888_WBC_patterns.cm
+
+```{r}
+reference_pattern <- "/home/fuh1/intermediate/20251107_GSE186888_WBC_patterns.cm"
+#input_pattern <- GenerateInput("~/intermediate/20251107_GSE186888_WBC.cg",reference_pattern)
+input_pattern <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg",reference_pattern)
+meta_data <- read_xlsx("~/cell_type/20220923_Loyfer_WGBS.xlsx")
+
+
+Gender_Pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
+VariableFeatures(Gender_Pattern.obj) <- rownames(Gender_Pattern.obj[['DNAm']])
+DefaultAssay(Gender_Pattern.obj) <- "DNAm"
+Gender_Pattern.obj <- NormalizeData(Gender_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Gender_Pattern.obj <- ScaleData(Gender_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Gender_Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(Gender_Pattern.obj@assays$DNAm@layers$counts)
+
+Gender_Pattern.obj <- RunPCA(Gender_Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Gender_Pattern.obj <- FindNeighbors(Gender_Pattern.obj, reduction = "mpca", dims = 1:30)
+Gender_Pattern.obj <- FindClusters(Gender_Pattern.obj, verbose = FALSE, resolution = 0.7)
+Gender_Pattern.obj <- RunUMAP(Gender_Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+n_clusters <- length(unique(Gender_Pattern.obj$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+
+clustering_labels <- as.integer(Idents(Gender_Pattern.obj))
+idx <- match(rownames(input_pattern),meta_data$Sample_ID)
+meta_data <- meta_data[idx,]
+Gender_Pattern.obj$Gender <- meta_data$Sex
+
+DimPlot(Gender_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'Gender', cols = cols, pt.size = 1)  + NoGrid()
+```
+
+### Check for sex specific clustering in Loyfer
+
+```{r}
+patterns <- "yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Loyfer2023_HumanAtlas.cm"
+tbl <- read.table(text=system(patterns, intern=TRUE), header=F)
+patterns_out <- tbl$V1
+
+for (i in 1:1000){
+  patterns_out_enrich <- ifelse(patterns_out == paste0("P",i),1,0)
+  write.table(patterns_out_enrich,"~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+  text <- paste0("yame pack ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern.txt -fb ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern/",i,".cg")
+  system(text)
+}
+
+# mergeCG2 ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern/ ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000.cg
+# yame summary -m /home/fuh1/references/hg38/KYCGKB_hg38/Chromosome.20221129.cm ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000_chr
+
+library(dplyr)
+library(tidyr)
+Chr_enrichment <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000_chr",header=T)
+Chr_enrichment$Log2OddsRatio <- as.numeric(Chr_enrichment$Log2OddsRatio)
+
+Chr_enrichment_sex <- Chr_enrichment %>% filter(Mask %in% c("chrX","chrY"))
+Chr_enrichment_sex_enrich <- Chr_enrichment_sex %>% filter(Log2OddsRatio >= 2)
+Sex_chromsome_pattern <- paste0("P",unique(Chr_enrichment_sex_enrich$Query))
+
+reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+
+reference_pattern <- "/home/fuh1/intermediate/20251118_Loyfer_patterns.cm"
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg",reference_pattern)
+input_pattern_filter <- input_pattern %>% dplyr::select(Sex_chromsome_pattern)
+
+Loyfer_Pattern.obj <- CreateSeuratObject(counts = t(input_pattern_filter), assay = "DNAm")
+VariableFeatures(Loyfer_Pattern.obj) <- rownames(Loyfer_Pattern.obj[['DNAm']])
+DefaultAssay(Loyfer_Pattern.obj) <- "DNAm"
+Loyfer_Pattern.obj <- NormalizeData(Loyfer_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Loyfer_Pattern.obj <- ScaleData(Loyfer_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Loyfer_Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(Loyfer_Pattern.obj@assays$DNAm@layers$counts)
+
+Loyfer_Pattern.obj <- RunPCA(Loyfer_Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Loyfer_Pattern.obj <- FindNeighbors(Loyfer_Pattern.obj, reduction = "mpca", dims = 1:30)
+Loyfer_Pattern.obj <- FindClusters(Loyfer_Pattern.obj, verbose = FALSE, resolution = 0.7)
+Loyfer_Pattern.obj <- RunUMAP(Loyfer_Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+n_clusters <- length(unique(Loyfer_Pattern.obj$DNAm_snn_res.0.7))
+cols <- DiscretePalette(n_clusters, palette = "parade", shuffle = FALSE)
+
+library(readxl)
+meta_excel <- read_xlsx("~/cell_type/20220923_Loyfer_WGBS.xlsx")
+meta_excel <- meta_excel[match(rownames(input_pattern_filter),meta_excel$Sample_ID),]
+Loyfer_Pattern.obj$sex <- meta_excel$Sex
+
+DimPlot(Loyfer_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'sex', cols = cols, pt.size = 1)  + NoGrid()+theme(legend.position = "top")+ggtitle("")
+ggsave("~/figures/fuh1/20251118_LoyferSex.pdf",width=3,height=3.5)
+
+### Plot some of the MRMP levels
+
+Chr_enrichment_sex_enrich_list <- c("P90","P641","P723","P949")
+
+PAR_enrichment <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000_chr_PAR",header=T)
+
+
+Chr_enrichment_sex_enrich_list <- c("P576","P502","P559","P142")
+
+library(patchwork)
+plots <- FeaturePlot(
+    Loyfer_Pattern.obj,
+    reduction = "meth.umap",
+    repel = TRUE,
+    features = Chr_enrichment_sex_enrich_list,
+    pt.size = 0.7,
+    slot = "counts",
+    combine = FALSE
+)
+plots <- lapply(plots, function(p){
+    p + scale_color_gradient(limits = c(0,1)) + NoGrid()
+})
+wrap_plots(plots)
+ggsave("~/figures/fuh1/20251118_Sex_pattern_chrX.pdf",width=5,height=5)
+
+# library(plotly)
+# p <- DimPlot(
+#     Loyfer_Pattern.obj,
+#     reduction = "meth.umap",
+#     repel = TRUE,
+#     group.by = "sex",
+#     cols = cols,
+#     pt.size = 1
+# ) + NoGrid() + theme(legend.position = "top") + ggtitle("")
+# ggplotly(p)
+```
+
+yame summary -m /home/fuh1/references/hg38/KYCGKB_hg38/Chromosome.20221129.cm /home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_chrmosomes.txt
+
+
+yame summary -m PAR.cm /home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_chrmosomes_PAR.txt
+
+
+```{r}
+test <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_chrmosomes_PAR.txt",header=T)
+chry <- test %>% filter(Mask == "chrY")
+chrx <- test %>% filter(Mask == "chrX")
+```
+
+/mnt/isilon/zhoulab/labbin/yamedev2 rowop /home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg -o binstring -b 0.2 > ~/intermediate/20251118_Loyfer_binstring
+Rscript ./GenerateReference.R ~/intermediate/20251118_Loyfer_binstring
+yame pack -f s patterns.txt ~/intermediate/20251118_Loyfer_patterns.cm
+
+```{r}
+
+
+
+```
+

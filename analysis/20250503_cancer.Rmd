@@ -1,0 +1,475 @@
+---
+title: "20250503_cancer"
+output: html_document
+date: "2025-05-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{R}
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/20250105_BloodGBM.cg",reference_pattern)
+
+input_pattern_blood <- rownames(input_pattern)[!grepl("^GBM", rownames(input_pattern))]
+#input_pattern_blood <- rownames(input_pattern)[grepl("^A5480", rownames(input_pattern))]
+input_pattern_blood <- input_pattern[input_pattern_blood,]
+#saveRDS(input_pattern,"~/cell_type/20250105_BloodGBM.rds")
+#Zhou2025_HumanAtlas_P1000 <- readRDS("/home/fuh1/intermediate/20250724_Zhou2025_training_model.rds")
+
+### sparsity filter
+# text <- "yame summary /home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/20250105_BloodGBM.cg"
+# sparsity_filter <- read.table(text=system(text, intern=TRUE), header=T)
+# sparsity_filter <- sparsity_filter[match(rownames(input_pattern_blood),sparsity_filter$Query),]
+# idx <- which(sparsity_filter$N_query > quantile(sparsity_filter$N_query,0.5))
+# input_pattern_blood <- input_pattern_blood[idx,]
+
+Zhou2025_HumanAtlas_P1000 <- getFromNamespace("Zhou2025_HumanAtlas_P1000", "MethScope")
+prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000,input_pattern_blood,smooth = T,KNeighbor = 7)
+idx <- which(prediction_result$confidence_score > 0.15)
+prediction_result <- prediction_result[idx,]
+input_pattern_blood <- input_pattern_blood[idx,]
+
+BloodGBM_Pattern.obj <- CreateSeuratObject(counts = t(input_pattern_blood), assay = "DNAm")
+VariableFeatures(BloodGBM_Pattern.obj) <- rownames(BloodGBM_Pattern.obj[['DNAm']])
+DefaultAssay(BloodGBM_Pattern.obj) <- "DNAm"
+BloodGBM_Pattern.obj <- NormalizeData(BloodGBM_Pattern.obj, assay = "DNAm", verbose = FALSE)
+BloodGBM_Pattern.obj <- ScaleData(BloodGBM_Pattern.obj, assay = "DNAm", verbose = FALSE)
+BloodGBM_Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(BloodGBM_Pattern.obj@assays$DNAm@layers$counts)
+
+BloodGBM_Pattern.obj <- RunPCA(BloodGBM_Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+BloodGBM_Pattern.obj <- FindNeighbors(BloodGBM_Pattern.obj, reduction = "mpca", dims = 1:30)
+BloodGBM_Pattern.obj <- FindClusters(BloodGBM_Pattern.obj, verbose = FALSE, resolution = 0.7)
+BloodGBM_Pattern.obj <- RunUMAP(BloodGBM_Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+
+BloodGBM_Pattern.obj$MethScope <- prediction_result$prediction_label
+n_clusters <- length(unique(BloodGBM_Pattern.obj$MethScope))
+cols <- c("#B5DCA5","#D7C382","#F08167","#E7576E","#A52E67","#630661","#420958")
+
+p1 <- DimPlot(BloodGBM_Pattern.obj, reduction = 'meth.umap', repel = TRUE,group.by = 'MethScope',cols=cols, pt.size = 0.5)  + NoGrid()
+p1
+
+ordered_clusters <- c("A5882","A5480","A5052")
+cell_order <- names(BloodGBM_Pattern.obj$orig.ident)[order(factor(BloodGBM_Pattern.obj$orig.ident, levels = ordered_clusters))]
+
+#cols <- c("#630661","#E7576E","#220D50")
+#cols <- c(rgb(196, 216, 242, maxColorValue = 255),rgb(242, 232, 227, maxColorValue = 255),rgb(142, 045, 048, maxColorValue = 255))
+cols <- c("#C4D8F2","#F2E8E3","#8E2D30")
+p2 <- DimPlot(BloodGBM_Pattern.obj, reduction = 'meth.umap', repel = TRUE,group.by = 'orig.ident',cols=cols,pt.size = 0.5,cells=cell_order,alpha = 0.7)  + NoGrid()
+
+p1+p2
+ggsave("~/figures/fuh1/20250729_BloodGBM_MethScope.pdf",width=9,height=4)
+
+# Blood_samples <- colnames(BloodGBM_Pattern.obj)[!grepl("^GBM", colnames(BloodGBM_Pattern.obj))]
+# Blood_Pattern.obj <- subset(BloodGBM_Pattern.obj, subset = orig.ident != "GBM")
+# DimPlot(Blood_Pattern.obj, reduction = 'meth.umap', repel = TRUE,group.by = 'MethScope', pt.size = 1)  + NoGrid()
+#ggsave("~/figures/fuh1/20250505_BloodGBM_MethScope.pdf",width=3,height=3)
+```
+
+pattern level umap
+
+```{R}
+### data_visualize from 20250130_patterns
+cell_type_list <- c("B_Mem","B_Naive","Mono","NK_CD56","Tmem_CD4","Tmem_CD8","Tnaive_CD4")
+features_list <- data_visualize %>% filter(cell_type %in% cell_type_list) %>% select(pattern)
+features_list <- features_list[,1]
+cell_list <- data_visualize %>% filter(cell_type %in% cell_type_list) %>% select(cell_type)
+cell_list <- cell_list[,1]
+
+plots <- lapply(seq_along(features_list), function(i) {
+  gene <- features_list[i]
+  cell_type <- cell_list[i]
+  FeaturePlot(
+    BloodGBM_Pattern.obj,
+    features = gene,
+    pt.size = 0.7,
+    slot = "scale.data"
+  ) +
+    scale_color_viridis_c(option = "inferno") +
+    ggtitle(paste0(gene, " (", cell_type, ")")) +
+    NoGrid()
+})
+
+library(patchwork)
+wrap_plots(plots) + plot_layout(ncol = 2)
+ggsave("~/figures/fuh1/20250729_BloodLeukemia_pattern_umap_2.pdf",height=8,width=5)
+
+FeaturePlot(
+    BloodGBM_Pattern.obj,
+    features = "P392",
+    pt.size = 0.7,
+    slot = "scale.data"
+  )
+```
+
+Bian 2021
+
+```{r}
+#reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2018_Bian.cg",reference_pattern)
+
+test_idx <- read.table("~/zhou_lab/projects/20220324_SingleCellMeth/hg38/2018_Bian.cg.idx")
+sample_sheet <- read_xlsx("~/kycg/20220313_2018_Bian.xlsx")
+idx <- match(test_idx$V1,sample_sheet$sampleName)
+sample_sheet <- sample_sheet[idx,]
+sample_sheet$anno <- paste0(sample_sheet$Source_name,"_",sample_sheet$Tissue)
+sample_sheet$anno <- ifelse(sample_sheet$anno == "Carcinoma_Left Colon","Carcinoma_Left_Colon",sample_sheet$anno)
+sample_sheet$anno <- ifelse(sample_sheet$anno == "Carcinoma_Right Colon","Carcinoma_Right_Colon",sample_sheet$anno)
+sample_sheet$anno <- ifelse(sample_sheet$anno == "Colon_Adjacent normal colon","Adjacent_Normal_Colon",sample_sheet$anno)
+sample_sheet$anno <- ifelse(sample_sheet$anno == "Carcinoma_Liver","Carcinoma_Meta_Liver",sample_sheet$anno)
+sample_sheet$anno <- ifelse(sample_sheet$anno == "Carcinoma_Lymph","Carcinoma_Meta_Lymph",sample_sheet$anno)
+sample_sheet$anno <- ifelse(sample_sheet$anno == "Carcinoma_Rectum","Carcinoma_Meta_Rectum",sample_sheet$anno)
+idx_remove <- which(sample_sheet$anno == "cell line_NA")
+sample_sheet <- sample_sheet[-idx_remove,]
+input_pattern_filter <- input_pattern[-idx_remove,]
+
+#prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000,input_pattern_filter,smooth = T)
+prediction_result <- PredictCellType(Loyfer_model,input_pattern_filter)
+Colon_Pattern.obj <- CreateSeuratObject(counts = t(input_pattern_filter), assay = "DNAm")
+VariableFeatures(Colon_Pattern.obj) <- rownames(Colon_Pattern.obj[['DNAm']])
+DefaultAssay(Colon_Pattern.obj) <- "DNAm"
+Colon_Pattern.obj <- NormalizeData(Colon_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Colon_Pattern.obj <- ScaleData(Colon_Pattern.obj, assay = "DNAm", verbose = FALSE)
+Colon_Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(Colon_Pattern.obj@assays$DNAm@layers$counts)
+
+Colon_Pattern.obj <- RunPCA(Colon_Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Colon_Pattern.obj <- FindNeighbors(Colon_Pattern.obj, reduction = "mpca", dims = 1:30)
+Colon_Pattern.obj <- FindClusters(Colon_Pattern.obj, verbose = FALSE, resolution = 0.7)
+Colon_Pattern.obj <- RunUMAP(Colon_Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30,spread = 0.15,min.dist = 0.2)
+
+Colon_Pattern.obj$MethScope <- prediction_result$prediction_label
+n_clusters <- length(unique(Colon_Pattern.obj$MethScope))
+#cols <- c("#B5DCA5","#428DBF","#EB8E47","#DB726B","#C1A9D2")
+
+p1 <- DimPlot(Colon_Pattern.obj, reduction = 'meth.umap', repel = TRUE,group.by = 'MethScope', pt.size = 0.5)  + NoGrid()
+p1
+#ggsave("~/figures/fuh1/20250805_Bian_colon_COO.pdf",width=4.8,height=4)
+
+Colon_Pattern.obj$Tissue <- sample_sheet$anno
+p2 <- DimPlot(Colon_Pattern.obj, reduction = 'meth.umap', repel = TRUE,group.by = 'Tissue', pt.size = 0.5)  + NoGrid() + scale_color_brewer(palette = "Set2")
+ggsave("~/figures/fuh1/20250805_Bian_colon_tissue.pdf",width=5.6,height=4)
+
+sample_sheet$patient_id <- paste0("Age ",gsub(" years","",sample_sheet$Age),"_",sample_sheet$Sex)
+Colon_Pattern.obj$Patient_ID <- sample_sheet$patient_id
+
+p3 <- DimPlot(Colon_Pattern.obj, reduction = 'meth.umap', repel = TRUE,group.by = 'Patient_ID', pt.size = 0.5)  + NoGrid() + scale_color_brewer(palette = "Paired")
+p3
+ggsave("~/figures/fuh1/20250805_Bian_colon_patient.pdf",width=5.2,height=4)
+```
+
+TCGA/blueprint
+
+```{r}
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+#reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2018_Zhou.cg",reference_pattern)
+#saveRDS(input_pattern,"~/cell_type/20250508_TCGA.rds")
+
+#prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000,input_pattern)
+Loyfer_model <- readRDS("/home/fuh1/intermediate/20250826_Loyfer_training_model.rds")
+prediction_result <- PredictCellType(Loyfer_model,input_pattern)
+prediction_result <- prediction_result %>% filter(confidence_score > 0.3)
+  
+### Blueprint
+BP_data <- prediction_result[grepl("^BP", rownames(prediction_result)), ]
+disease_status <- sub(".*_", "", rownames(BP_data))
+cell_type <- sub(".*?_[SVGCN][^_]+_([^_]+(?:_[^_]+)*)_.*", "\\1", rownames(BP_data))
+library(readxl)
+cell_label <- read_xlsx("~/cell_type/20180202_BLUEPRINT.xlsx")
+cell_label <- cell_label[match(rownames(BP_data),cell_label$sample),]
+cell_group <- cell_label$subtype
+cell_group[is.na(cell_group)] <- "Endothelial"
+cell_group[cell_group == "EndoProgenitor"] <- "Endothelial"
+
+# library(stringr)
+# cell_group <- case_when(
+#   str_detect(cell_type, "plasma") ~ "plasma_cell",
+#   str_detect(cell_type, "naive.*B|B.*naive|naive_B") ~ "B_Naive",
+#   str_detect(cell_type, "memory.*B|B.*memory|memory_B") ~ "B_memory",
+#   str_detect(cell_type, "B") ~ "B_cell",
+#   str_detect(cell_type, "killer") ~ "NK_cell",
+#   str_detect(cell_type, "thymocyte") ~ "thymocyte",
+#   str_detect(cell_type, "memory.*CD8|memory.*CD4|T_cell.*memory|T_memory") ~ "T_memory",
+#   str_detect(cell_type, "naive.*T|T.*naive") ~ "T_naive",
+#   str_detect(cell_type, "CD8|CD4|T_cell") ~ "T_cell",
+#   str_detect(cell_type, "myeloid") ~ "myeloid",
+#   str_detect(cell_type, "monocyte|macrophage") ~ "monocytes",
+#   str_detect(cell_type, "neutrophil") ~ "neutrophil",
+#   str_detect(cell_type, "dendritic") ~ "dendritic",
+#   str_detect(cell_type, "eosinophil") ~ "eosinophil",
+#   TRUE ~ "Not Annotated"
+# )
+
+confusion_matirx_df <- as.data.frame(cbind(as.character(BP_data$prediction_label),disease_status,cell_group,BP_data$confidence_score))
+
+### disease version
+confusion_matirx_df_filter <- confusion_matirx_df %>% filter(disease_status != "DiseaseFree")
+cell_status <- confusion_matirx_df_filter$disease_status
+cell_status[cell_status == "MultipleMyeloma"] <- "PlasmaCell_MultipleMyeloma"
+cell_status[cell_status == "AcuteLymphocyticLeukemia"] <- "BCell_AcuteLymphocyticLeukemia"
+cell_status[cell_status == "TcellProlymphocyticLeukemia"] <- "Tcell_ProlymphocyticLeukemia"
+confusion_matirx_df_filter$cell_status <- cell_status
+conf_mat <- table(confusion_matirx_df_filter$V1, confusion_matirx_df_filter$cell_status)
+
+### normal version
+confusion_matirx_df_filter <- confusion_matirx_df %>% filter(disease_status == "DiseaseFree")
+confusion_matirx_df_filter <- confusion_matirx_df_filter %>% filter(!cell_group %in% c("Neutrophil","Osteoclast","Eosinophil","ProgenitorCell"))
+cell_status <- confusion_matirx_df_filter$cell_group
+cell_status[cell_status == "PlasmaCell"] <- "BCell"
+cell_status[cell_status == "thymoctye"] <- "Thymocyte"
+confusion_matirx_df_filter$cell_status <- cell_status
+conf_mat <- table(confusion_matirx_df_filter$V1, confusion_matirx_df_filter$cell_status)
+
+conf_df <- as.data.frame(conf_mat)
+colnames(conf_df) <- c("Predicted", "True", "Count")
+
+library(ggplot2)
+
+conf_df$True <- factor(conf_df$True, levels = c(setdiff(unique(conf_df$True), "Not Annotated"), "Not Annotated"))
+conf_df$True <- factor(conf_df$True, levels = rev(levels(conf_df$True)))
+ggplot(conf_df, aes(x = Predicted, y = True, fill = Count)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue", trans = "sqrt") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "", x = "MethScope Predicted COO", y = "",fill="# of Samples")
+#ggsave("~/figures/fuh1/20250729_blueprint_normal.pdf",width=5,height=4)
+
+### plot proportion instead
+conf_df_prop <- conf_df %>%
+  group_by(True) %>%
+  mutate(Proportion = Count / sum(Count)) %>%
+  ungroup()
+ggplot(conf_df_prop, aes(x = Predicted, y = True, fill = Proportion)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "",
+    x = "MethScope Predicted COO",
+    y = "",
+    fill = "Proportion"
+  )
+ggsave("~/figures/fuh1/20250827_blueprint_normal_test.pdf",width=5,height=4)
+#ggsave("~/figures/fuh1/20250805_blueprint_normal.pdf",width=5,height=4)
+
+
+### TCGA
+input_pattern_TCGA <- input_pattern[grepl("^TCGA", rownames(input_pattern)), ]
+#prediction_result <- PredictCellType(Loyfer_model,input_pattern_TCGA)
+prediction_result <- PredictCellType(Zhou2025_HumanAtlas_P1000,input_pattern_TCGA)
+prediction_result <- prediction_result %>% filter(confidence_score > 0.1)
+
+cancer_type <- sub("TCGA_([^_]+)_.*", "\\1", rownames(prediction_result))
+
+df <- data.frame(Cancer = cancer_type, Prediction = prediction_result$prediction_label,confidence=prediction_result$confidence_score)
+
+freq_table <- df %>%
+  group_by(Cancer, Prediction) %>%
+  summarise(Frequency = n(), .groups = "drop")
+freq_table$Prediction <- as.factor(as.character(freq_table$Prediction))
+freq_table <- freq_table %>%
+  tidyr::complete(Cancer, Prediction, fill = list(Frequency = 0))
+
+ggplot(freq_table, aes(x = Prediction, y = Cancer, fill = Frequency)) +
+  geom_tile(color = "white") +
+  #scale_fill_distiller(palette = "RdBu", direction = 1)+
+  scale_fill_gradientn(
+  colors = c("#0d0881", "#0d4799", "#cb4679", "#f85000", "#f0f921"),
+  values = scales::rescale(c(0, 1, 2, 3, 5)), 
+  limits = c(0, 5))+
+  #scale_fill_viridis_c(option = "plasma")+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "",
+       x = "Predicted COO", y = "", fill = "# of Samples")
+#ggsave("~/figures/fuh1/20250730_TCGA.pdf",width=5,height=4)
+
+### proportion
+
+freq_table_prop <- freq_table %>%
+  group_by(Cancer) %>%
+  mutate(Proportion = Frequency / sum(Frequency)) %>%
+  ungroup()
+
+ggplot(freq_table_prop, aes(x = Prediction, y = Cancer, fill = Proportion)) +
+  geom_tile(color = "white") +
+   scale_fill_gradientn(
+    colors = c("#0d0881", "#0d4799", "#cb4679", "#f85000","#f89000"),
+    values = scales::rescale(c(0, 0.25, 0.5, 0.75, 1.0)),  
+    limits = c(0, 1)
+  )+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "",
+       x = "Predicted COO", 
+       y = "", 
+       fill = "Proportion")
+ggsave("~/figures/fuh1/20250827_TCGA.pdf",width=5,height=4)
+
+
+# pdf("~/figures/fuh1/20250903_top_features.pdf",width=10,height=10)
+# pheatmap(expr_mat,
+#          clustering_distance_rows = "euclidean",
+#          clustering_method = "complete",
+#          show_colnames = TRUE,
+#          show_rownames = TRUE,
+#          cluster_cols = F)
+# dev.off()
+
+
+library(tidyverse)
+library(ggradar)
+library(RColorBrewer)
+
+lvl_pred <- levels(factor(freq_table_prop$Prediction))
+freq_table_prop$Prediction <- factor(freq_table_prop$Prediction, levels = lvl_pred)
+
+freq_wide <- freq_table_prop %>%
+  select(Cancer, Prediction, Proportion) %>%
+  pivot_wider(names_from = Prediction, values_from = Proportion, values_fill = 0)
+
+n_groups <- nrow(freq_wide)
+cols <- colorRampPalette(brewer.pal(8, "Set1"))(n_groups)
+
+# plot
+ggradar(
+  freq_wide,
+  font.radar = "sans",
+  values.radar = c("0", "0.5", "1.0"),
+  grid.min = 0, grid.mid = 0.5, grid.max = 1,
+  group.line.width = 1.2,
+  group.point.size = 2.5,
+  group.colours = cols,     
+  legend.position = "right",
+  axis.label.size = 4
+) +
+  ggtitle("Predicted COO proportions") +  theme(
+    plot.title = element_text(size = 11, face = "bold"),  # title size
+    legend.text = element_text(size = 8),                 # legend font
+    legend.title = element_text(size = 9)
+  )
+ggsave("~/figures/fuh1/20251105_TCGA.pdf",width=6,height=5)
+```
+
+### array loyfer + zhou training
+
+for i in {1..10}; do echo "Running iteration $i"; yame dsample -s $i -N 1000000 /home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg > ~/tmp/20231215_Loyfer/20250703_LoyferTrain/2023_Loyfer_Train_${i}.cg; done
+
+cp /home/fuh1/tmp/20240322_SparseM/Zhou2025_train.cg ~/tmp/20231215_Loyfer/20250703_LoyferTrain/
+
+mergeCG2 20250703_LoyferTrain 20250703_LoyferTrain.cg
+
+yame summary -m ~/cell_type/2023_Loyfer.cm 20250703_LoyferTrain.cg | less 
+
+```{r}
+reference_pattern <- "/home/fuh1/cell_type/hg38_95celltypes_LoyferPlusZhou.cm"
+#reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+input_pattern <- GenerateInput("/home/fuh1/tmp/20231215_Loyfer/20250703_LoyferTrain/2023_Loyfer_Train_1.cg",reference_pattern)
+
+```
+
+### array plot
+```{r}
+array_result <- readRDS("~/cell_type/HM450_TCGA_prediction_subset.rds")
+array_result_2 <- readRDS("~/cell_type/HM450_TCGA_prediction_result.rds")
+array_result <- array_result_2
+
+prediction_result <- array_result@assays@data@listData[[1]]
+meta <- array_result@elementMetadata@listData$CANCER_TYPE
+
+df <- data.frame(Cancer = meta, Prediction = prediction_result$prediction_label,confidence=prediction_result$confidence_score)
+df <- df %>% filter(confidence > 0.3) 
+df <- df %>% filter(!Cancer %in% c("UVM","SKCM_BRAF","SKCM_NF1","SKCM_RAS","SKCM_WT","SKCM","ESCA","ESCA_CIN","ESCA_ESCC","GBM","GLM_PA","HCC_G2","HCC_G4","HCC_G6","HCC_G7","KIRP","LUAD_G1","LUAD_G2","LUAD_G3","MESO","OV","PAAD","PCPG_CA","PCPG_KS","PCPG_PH","PCPG_WNT","SARC","SARC_DDLPS","SARC_LMS","SARC_MFSUPS","STAD_CIN","STAD_MSI","STAD_POLE","TGCT_NS","TGCT_SM","THYM","UCS"))
+df$Cancer[grepl("PRAD", df$Cancer)] <- "PRAD"
+
+### Merge subtypes
+
+df$Cancer[grepl("ACC", df$Cancer)] <- "ACC"
+df$Cancer[grepl("AML", df$Cancer)] <- "AML"
+df$Cancer[grepl("BLCA", df$Cancer)] <- "BLCA"
+df$Cancer[grepl("BRCA", df$Cancer)] <- "BRCA"
+df$Cancer[grepl("CESC", df$Cancer)] <- "CESC"
+df$Cancer[grepl("COAD", df$Cancer)] <- "COAD"
+df$Cancer[grepl("DLBC", df$Cancer)] <- "DLBC"
+df$Cancer[grepl("GLM", df$Cancer)] <- "GLM"
+df$Cancer[grepl("HNSC", df$Cancer)] <- "HNSC"
+df$Cancer[grepl("LUSC", df$Cancer)] <- "LUSC"
+df$Cancer[grepl("READ", df$Cancer)] <- "READ"
+df$Cancer[grepl("UCEC", df$Cancer)] <- "UCED"
+
+freq_table <- df %>%
+  group_by(Cancer, Prediction) %>%
+  summarise(Frequency = n(), .groups = "drop")
+freq_table$Prediction <- as.factor(as.character(freq_table$Prediction))
+freq_table <- freq_table %>%
+  tidyr::complete(Cancer, Prediction, fill = list(Frequency = 0))
+
+### proportion
+
+freq_table_prop <- freq_table %>%
+  group_by(Cancer) %>%
+  mutate(Proportion = Frequency / sum(Frequency)) %>%
+  ungroup()
+
+ggplot(freq_table_prop, aes(x = Prediction, y = Cancer, fill = Proportion)) +
+  geom_tile(color = "white") +
+   scale_fill_gradientn(
+    colors = c("#0d0881", "#0d4799", "#cb4679", "#f85000","#f89000"),
+    values = scales::rescale(c(0, 0.25, 0.5, 0.75, 1.0)),
+    limits = c(0, 1)
+  )+
+  #scale_fill_viridis_c(option = "rocket")+
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "",
+       x = "Predicted COO", 
+       y = "", 
+       fill = "Proportion")
+#ggsave("~/figures/fuh1/20250805_HM450K_prediction_major.pdf",width=5,height=5)
+
+library(ggalluvial)
+
+p <- ggplot(freq_table_prop, aes(axis1 = Cancer, axis2 = Prediction, y = Proportion)) +
+  geom_alluvium(aes(fill = Cancer), width = 1/12) +
+  geom_stratum(width = 1/12, fill = "grey", color = "black")  # This is essential
+
+plot_layers <- ggplot_build(p)$data
+stratum_data <- plot_layers[[2]]
+
+right_labels <- stratum_data %>%
+  filter(x == 2) %>%
+  arrange(y) %>%
+  mutate(
+    label_pos = ifelse(row_number() %% 2 == 0, x + 0.17, x - 0.17),  # offset left/right
+    hjust_val = ifelse(row_number() %% 2 == 0, 1, 0)               # align accordingly
+  )
+# For left labels (x = 1)
+left_labels <- stratum_data %>%
+  filter(x == 1)
+
+# Final plot with custom labels
+p +
+  geom_text(data = left_labels,
+            aes(x = x, y = y, label = stratum),
+            inherit.aes = FALSE,
+            hjust = 1, size = 3) +
+  geom_text(data = right_labels,
+            aes(x = label_pos, y = y, label = stratum, hjust = hjust_val),
+            inherit.aes = FALSE,
+            size = 3) +
+  scale_x_discrete(limits = c("Cancer", "Prediction"), expand = c(.05, .05)) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid = element_blank(),
+    panel.border = element_blank(),
+    legend.position = "None"
+  )
+#ggsave("~/figures/fuh1/20250805_HM450K_prediction_alluvium.pdf",width=5,height=8)
+```
+
