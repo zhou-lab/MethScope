@@ -1291,16 +1291,16 @@ for (i in 1:1000){
   system(text)
 }
 
-# mergeCG2 ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern/ ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000.cg
-# yame summary -m /home/fuh1/references/hg38/KYCGKB_hg38/Chromosome.20221129.cm ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000_chr
+# mergeCG2 ~/zhoulab/labprojects/20231112_Hongxiang/20251119_Loyfer_pattern/ ~/zhoulab/labprojects/20231112_Hongxiang/20251119_Loyfer_pattern_1000.cg
+# yame summary -m /home/fuh1/references/hg38/KYCGKB_hg38/Chromosome.20221129.cm ~/zhoulab/labprojects/20231112_Hongxiang/20251119_Loyfer_pattern_1000.cg > ~/zhoulab/labprojects/20231112_Hongxiang/20251119_Loyfer_pattern_1000_chr
 
 library(dplyr)
 library(tidyr)
-Chr_enrichment <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000_chr",header=T)
+Chr_enrichment <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20251119_Loyfer_pattern_1000_chr",header=T)
 Chr_enrichment$Log2OddsRatio <- as.numeric(Chr_enrichment$Log2OddsRatio)
 
 Chr_enrichment_sex <- Chr_enrichment %>% filter(Mask %in% c("chrX","chrY"))
-Chr_enrichment_sex_enrich <- Chr_enrichment_sex %>% filter(Log2OddsRatio >= 2)
+Chr_enrichment_sex_enrich <- Chr_enrichment_sex %>% filter(Log2OddsRatio >= 2.5)
 Sex_chromsome_pattern <- paste0("P",unique(Chr_enrichment_sex_enrich$Query))
 
 reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
@@ -1333,13 +1333,14 @@ DimPlot(Loyfer_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 's
 
 ### Plot some of the MRMP levels
 
-Chr_enrichment_sex_enrich_list <- c("P90","P641","P723","P949")
+Chr_enrichment_sex_enrich_list <- c("P529","P499","P744","P281")
 
-PAR_enrichment <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000_chr_PAR",header=T)
+# PAR_enrichment <- read.table("~/zhoulab/labprojects/20231112_Hongxiang/20251117_Loyfer_pattern_1000_chr_PAR",header=T)
 
 
-Chr_enrichment_sex_enrich_list <- c("P576","P502","P559","P142")
+#Chr_enrichment_sex_enrich_list <- c("P576","P502","P559","P142")
 
+Chr_enrichment_sex_enrich_list <- "P51"
 library(patchwork)
 plots <- FeaturePlot(
     Loyfer_Pattern.obj,
@@ -1354,8 +1355,10 @@ plots <- lapply(plots, function(p){
     p + scale_color_gradient(limits = c(0,1)) + NoGrid()
 })
 wrap_plots(plots)
-ggsave("~/figures/fuh1/20251118_Sex_pattern_chrX.pdf",width=5,height=5)
+ggsave("~/figures/fuh1/20251119_Sex_pattern_chrX.pdf",width=5,height=5)
 
+plots
+ggsave("~/figures/fuh1/20251118_LoyferSex_p51.pdf",width=3.3,height=3)
 # library(plotly)
 # p <- DimPlot(
 #     Loyfer_Pattern.obj,
@@ -1381,12 +1384,21 @@ chrx <- test %>% filter(Mask == "chrX")
 ```
 
 /mnt/isilon/zhoulab/labbin/yamedev2 rowop /home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg -o binstring -b 0.2 > ~/intermediate/20251118_Loyfer_binstring
-Rscript ./GenerateReference.R ~/intermediate/20251118_Loyfer_binstring 200
+Rscript ./GenerateReference.R ~/intermediate/20251118_Loyfer_binstring 100
 yame pack -f s patterns.txt ~/intermediate/20251118_Loyfer_patterns.cm
 
 ```{r}
+reference_set = readLines("~/intermediate/20251118_Loyfer_binstring")
+#Calculate the frequency of each string
+stringFrequency <- table(reference_set)
+frequencyDF <- as.data.frame(stringFrequency)
+#Sort the data frame by frequency
+sortedFrequency <- frequencyDF[order(-frequencyDF$Freq),]
+sortedFrequency$pattern <- paste0("P",seq(1:(nrow(sortedFrequency))))
 
 
-
+sex_vector <- ifelse(meta_excel$Sex == "Male",1,0)
+sex_vector <- paste(sex_vector, collapse = "")
+sortedFrequency_sex <- sortedFrequency %>% filter(reference_set == sex_vector)
 ```
 

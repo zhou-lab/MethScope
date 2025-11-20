@@ -20,7 +20,7 @@ library(MethScope)
 
 ## Generate cell/pixel/sample MRMPs' embedding
 
-In the below code, we will demonstrate how to generate the cell by MRMPs matrix using our example.cg file. Replace it with your own .cg data file path, and for more details about how to create .cg file, please check out (https://zhou-lab.github.io/YAME/). We provided three reference MRMPs definitions (mouse brain and human pan tissues), please check out MRMP-definition-Tutorial for creating your own reference. 
+In the below code, we will demonstrate how to genate the cell by MRMPs matrix using our example.cg file. Replace it with your own .cg data file path, and for more details about how to create .cg file, please check out (https://zhou-lab.github.io/YAME/). We provided three reference MRMPs definitions (mouse brain and human pan tissues), please check out our MRMPs reference tutorial for creating your own reference. 
 
 ```{r,eval=FALSE}
 example_file <- system.file("extdata", "example.cg", package = "MethScope")
@@ -30,7 +30,7 @@ input_pattern <- GenerateInput(example_file, reference_pattern)
 
 If your input data contains many cells, we recommend splitting your .cg files and run the above code in parallel to improve the runtime. To split your .cg files, please refer to (https://zhou-lab.github.io/YAME/docs/subset.html). For understanding of each pattern, please check out our knowYourCG tool: https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html
 
-## Perfrom cell type annotation
+## Perform cell type annotation
 
 To use our pre-trained model, simply use PredictCellType function as shown below for ultra fast cell type annotation. We provided two built in pre-trained models for mouse brain: Liu2021_MouseBrain_P1000 and human tissue atlas: Zhou2025_HumanAtlas_P1000.
 
@@ -38,7 +38,7 @@ To use our pre-trained model, simply use PredictCellType function as shown below
 prediction_result <- PredictCellType(MethScope:::Liu2021_MouseBrain_P1000,input_pattern)
 ```
 
-## Train the classfication model
+## Train the classification model
 
 To train your own model, use our Input_training function with the cell_type_label vector that correspond to each row of your input_pattern matrix. You can provide your own list for xgb model parameters or set cross_validation = T to find the optimal parameter. 
 

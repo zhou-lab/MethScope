@@ -1,0 +1,52 @@
+---
+title: "MethScope-MRMP"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MethScope-MRMP}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Generate MRMP reference
+
+We provided three reference MRMPs definitions, and if you want to create your own MRMPs definitions, please follow the following tutorial. 
+
+1. Download and install **YAME** (https://zhou-lab.github.io/YAME/)
+2. Process you methylation reference file into .cg file
+3. run the following yame rowop code to binarize your input file (default threshold is at 0.5, use -b to adjust threshold if needed)
+
+```{bash, eval=FALSE}
+yame rowop example.cg -o binstring > example_binstring
+```
+
+4. Generate the reference definition (default min CG per MRMP is 50, adjust the threshold if needed with min_CG)
+
+```{r, eval=FALSE}
+GenerateReference(example_binstring)
+```
+
+5. Pack the generated pattern.txt into .cm file which can be directly used as reference_pattern in our GenerateInput function.
+
+```{bash, eval=FALSE}
+yame pack -f s patterns.txt patterns.cm
+```
+
+## Generate MRMPs reference from cell type pseudobulks
+
+It might be useful to generate the MRMPs reference from cell type pseudobulks if the cell type label is available. 
+
+1. Obtain a txt file that contains sample names belong to oen cell type that you want to merge together from the cell type label.
+2. Generate the pseudobulk profile using yame subset and rowop
+
+```{bash, eval=FALSE}
+yame subset -l samples.txt example.cg | yame rowop -o musum - example_pseudobulk.cg
+```
+
+Please check our full code GenerateReference.sh in our analysis folder (https://github.com/zhou-lab/MethScope) as a reference for in parallel process multiple cell types. After obtaining the pseudobulk profile, it will be the same steps as above to obtain the MRMPs definition file.
