@@ -84,15 +84,16 @@
 <h2 id="generate-cellpixelsample-mrmps-embedding">Generate cell/pixel/sample MRMPs’ embedding<a class="anchor" aria-label="anchor" href="#generate-cellpixelsample-mrmps-embedding"></a>
 </h2>
 <p>In the below code, we will demonstrate how to genate the cell by
-MRMPs matrix using our example.cg file. Replace it with your own .cg
-data file path, and for more details about how to create .cg file,
-please check out (<a href="https://zhou-lab.github.io/YAME/" class="external-link uri">https://zhou-lab.github.io/YAME/</a>). We provided three
+MRMPs matrix using our example.cg file, please check out our (<a href="https://github.com/zhou-lab/methscope_data" class="external-link uri">https://github.com/zhou-lab/methscope_data</a>). Replace it
+with your own .cg data file path, and for more details about how to
+create .cg file, please check out (<a href="https://zhou-lab.github.io/YAME/" class="external-link uri">https://zhou-lab.github.io/YAME/</a>). We provided three
 reference MRMPs definitions (mouse brain and human pan tissues), please
 check out our MRMPs reference tutorial for creating your own
 reference.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">example_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"example.cg"</span>, package <span class="op">=</span> <span class="st">"MethScope"</span><span class="op">)</span></span>
-<span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"Liu2021_MouseBrain.cm"</span>, package <span class="op">=</span> <span class="st">"MethScope"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co">#path to your .cg and .cm files</span></span>
+<span><span class="va">example_file</span> <span class="op">&lt;-</span> <span class="st">"example.cg"</span></span>
+<span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="st">"Liu2021_MouseBrain.cm"</span></span>
 <span><span class="va">input_pattern</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GenerateInput.html">GenerateInput</a></span><span class="op">(</span><span class="va">example_file</span>, <span class="va">reference_pattern</span><span class="op">)</span></span></code></pre></div>
 <p>If your input data contains many cells, we recommend splitting your
 .cg files and run the above code in parallel to improve the runtime. To
@@ -135,11 +136,10 @@ results</p>
 </h2>
 <p>Cell type proportions can be estimated with our nnls_deconv
 functions, to obtain the reference input, please check out our (<a href="https://github.com/zhou-lab/methscope_data" class="external-link uri">https://github.com/zhou-lab/methscope_data</a>) which stores
-the reference pseudo bulk .cg files.</p>
+the reference patterns.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"Liu2021_MouseBrain.cm"</span>, package <span class="op">=</span> <span class="st">"MethScope"</span><span class="op">)</span></span>
-<span><span class="va">reference_input</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GenerateInput.html">GenerateInput</a></span><span class="op">(</span><span class="st">"2021_LiuMajorTypePseudo.cg"</span>,<span class="va">reference_pattern</span><span class="op">)</span></span>
-<span><span class="va">reference_input</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/imputeRowMean.html">imputeRowMean</a></span><span class="op">(</span><span class="va">reference_input</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="st">"Liu2021_MouseBrain.cm"</span></span>
+<span><span class="va">reference_input</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"2021Liu_reference_pattern.rds"</span><span class="op">)</span></span>
 <span><span class="va">cell_proportion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nnls_deconv.html">nnls_deconv</a></span><span class="op">(</span><span class="va">reference_input</span>,<span class="va">input_pattern</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
