@@ -8,7 +8,9 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+options(device = "png")
 knitr::opts_chunk$set(
+  fig.ext = "png",
   collapse = TRUE,
   comment = "#>"
 )
@@ -20,11 +22,12 @@ library(MethScope)
 
 ## Generate cell/pixel/sample MRMPs' embedding
 
-In the below code, we will demonstrate how to genate the cell by MRMPs matrix using our example.cg file. Replace it with your own .cg data file path, and for more details about how to create .cg file, please check out (https://zhou-lab.github.io/YAME/). We provided three reference MRMPs definitions (mouse brain and human pan tissues), please check out our MRMPs reference tutorial for creating your own reference. 
+In the below code, we will demonstrate how to genate the cell by MRMPs matrix using our example.cg file, please check out our (https://github.com/zhou-lab/methscope_data). Replace it with your own .cg data file path, and for more details about how to create .cg file, please check out (https://zhou-lab.github.io/YAME/). We provided three reference MRMPs definitions (mouse brain and human pan tissues), please check out our MRMPs reference tutorial for creating your own reference.  
 
 ```{r,eval=FALSE}
-example_file <- system.file("extdata", "example.cg", package = "MethScope")
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+#path to your .cg and .cm files
+example_file <- "example.cg"
+reference_pattern <- "Liu2021_MouseBrain.cm"
 input_pattern <- GenerateInput(example_file, reference_pattern)
 ```
 
@@ -59,12 +62,11 @@ PlotF1(prediction_result,cell_type_label)
 
 ## Cell type deconvolution
 
-Cell type proportions can be estimated with our nnls_deconv functions, to obtain the reference input, please check out our (https://github.com/zhou-lab/methscope_data) which stores the reference pseudo bulk .cg files.
+Cell type proportions can be estimated with our nnls_deconv functions, to obtain the reference input, please check out our (https://github.com/zhou-lab/methscope_data) which stores the reference patterns.
 
 ```{r,eval=FALSE}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
-reference_input <- GenerateInput("2021_LiuMajorTypePseudo.cg",reference_pattern)
-reference_input <- imputeRowMean(reference_input)
+reference_pattern <- "Liu2021_MouseBrain.cm"
+reference_input <- readRDS("2021Liu_reference_pattern.rds")
 cell_proportion <- nnls_deconv(reference_input,input_pattern)
 ```
 
