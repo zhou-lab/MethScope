@@ -8,12 +8,6 @@
 #' @import xgboost
 #' @importFrom stats setNames
 #' @importFrom dplyr mutate
-#' @examples
-#' # Use the example.cg file included in the package
-#' reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
-#' example_file <- system.file("extdata", "example.cg", package = "MethScope")
-#' result <- GenerateInput(example_file,reference_pattern)
-#' prediction_result <- PredictCellType(MethScope:::Liu2021_MouseBrain_P1000,result)
 #' @export
 PredictCellType <- function(bst_model, predictMatrix,smooth=FALSE,KNeighbor=5) {
   numberOfClasses <- bst_model$params$num_class

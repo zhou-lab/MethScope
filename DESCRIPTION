@@ -1,11 +1,11 @@
 Package: MethScope
-Title: Ultra-fast Analysis of Sparse DNA Methylome via Recurrent Pattern Encoding
+Title: Ultra-Fast Analysis of Sparse DNA Methylome via Recurrent Pattern Encoding
 Version: 1.0.0
 Authors@R: c(
     person("Hongxiang", "Fu", , "fhx@seas.upenn.edu", role = c("aut", "cre"),comment = c(ORCID = "0000-0002-9873-8606")),
     person("Wanding", "Zhou", , "wanding.zhou@pennmedicine.upenn.edu", role = c("cph", "fnd"))
     )
-Description: MethScope identifies Most Recurrent Methylation Patterns (MRMPs).
+Description: Identifies Most Recurrent Methylation Patterns (MRMPs).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -29,3 +29,5 @@ Suggests:
     knitr,
     rmarkdown
 VignetteBuilder: knitr
+Depends: 
+    R (>= 2.10)

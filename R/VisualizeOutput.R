@@ -68,9 +68,10 @@ PlotUMAP_fixedwindow <- function(query_fn, knowledge_fn,prediction_result,n_comp
   set.seed(seed)
   stopifnot(is.character(query_fn), is.character(knowledge_fn))
   if (.Platform$OS.type == "windows") {
-    stop("Testing sequencing data does not support Windows.")
+    stop("Testing sequencing data does not support Windows. Please directly use yame to generate inputs.")
   }
-  yame_result <- .Call("yame_summary_cfunc", query_fn, knowledge_fn)
+  temp_file <- tempfile(fileext = ".txt")
+  yame_result <- .Call("yame_summary_cfunc", query_fn, knowledge_fn, temp_file)
 
   summary_results <- utils::read.table(text = paste(yame_result, collapse = "\n"), header = TRUE)
 

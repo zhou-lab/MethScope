@@ -10,17 +10,12 @@
 #' @importFrom utils read.table
 #' @importFrom magrittr %>%
 #' @importFrom data.table fread
-#' @examples
-#' # Use the example.cg file included in the package
-#' reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
-#' example_file <- system.file("extdata", "example.cg", package = "MethScope")
-#' result <- GenerateInput(example_file,reference_pattern)
 #' @export
 GenerateInput <- function(query_fn, knowledge_fn) {
 
   stopifnot(is.character(query_fn), is.character(knowledge_fn))
   if (.Platform$OS.type == "windows") {
-    stop("Testing sequencing data does not support Windows.")
+    stop("Testing sequencing data does not support Windows. Please directly use yame to generate inputs.")
   }
   #yame_result <- .Call("yame_summary_cfunc", query_fn, knowledge_fn)
   
