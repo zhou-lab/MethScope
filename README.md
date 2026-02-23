@@ -1,4 +1,4 @@
-<img src="MethScope.png" alt="MethScope logo" width="60" align="right">
+<img src="MethScope.png" alt="MethScope logo" width="72" align="right">
 
 # MethScope
 
