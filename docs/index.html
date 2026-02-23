@@ -64,36 +64,96 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9"><div class="section level1">
+  <main id="main" class="col-md-9"><p><img src="reference/figures/logo.png" alt="MethScope logo" width="72" align="right"></p>
+<div class="section level1">
 <div class="page-header">
 <img src="logo.png" class="logo" alt=""><h1 id="methscope">MethScope<a class="anchor" aria-label="anchor" href="#methscope"></a>
 </h1>
 </div>
-<p><strong>MethScope</strong> identifies Most Recurrent Methylation Patterns (MRMPs) as the basis to encode latent representations for interpretatble analysis of DNA mehtylation data, in particular single cell and spatial methylome. The MRMPs embeddings will support automatic <strong>cell annotation</strong>, <strong>bulk deconvolution</strong>, <strong>unsupervisded clustering</strong>, and <strong>cancer cell of origin prediction</strong>.</p>
+<p><strong>MethScope</strong> is an R package for ultra-fast analysis of sparse DNA methylome data using <strong>Most Recurrent Methylation Patterns (MRMPs)</strong>.</p>
+<p>It supports downstream analysis for: - Cell type annotation - Cell type deconvolution - Unsupervised clustering - Cancer cell-of-origin prediction - Missing value imputation</p>
+<div class="section level2">
+<h2 id="why-methscope">Why MethScope?<a class="anchor" aria-label="anchor" href="#why-methscope"></a>
+</h2>
+<p>Sparse single-cell and spatial methylome data are difficult to analyze directly. MethScope compresses methylation signals into MRMP-based embeddings so you can run robust and scalable downstream tasks with standard analysis workflows.</p>
+</div>
+<div class="section level2">
+<h2 id="method-overview">Method overview<a class="anchor" aria-label="anchor" href="#method-overview"></a>
+</h2>
+<p align="center">
+<img src="reference/figures/logo.png" alt="MethScope workflow overview" width="980"></p>
+<p>MethScope converts high-dimensional methylation atlas signals into compact MRMP features and applies these features across multiple analysis tasks.</p>
+<p>Core workflow: - Binarize methylation atlas profiles and consolidate recurrent patterns - Select top recurrent methylation patterns (MRMPs) - Encode each sample, cell, or pixel into an MRMP-based representation - Run downstream modeling for annotation, deconvolution, imputation, and representation learning</p>
+<p>Use cases supported in the current pipeline: - Cell-type annotation in sparse single-cell methylome profiles - Mini-bulk deconvolution for mixed-cell samples - Missing-value imputation for sparse CpG measurements - Representation learning for clustering and embedding analysis</p>
+</div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>Install the released version of usethis from CRAN:</p>
+<p>Install from CRAN:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"MethScope"</span><span class="op">)</span></span></code></pre></div>
-<p>or install from github</p>
+<p>Or install the development version from GitHub:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"zhou-lab/MethScope"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"zhou-lab/MethScope"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
+<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<p><strong>MethScope</strong> performs rapid cell annotation, deconvolution and other tasks for single cell and spatial DNA methylome. Please check out our documentation for more details:</p>
-<p><a href="https://zhou-lab.github.io/MethScope/" class="external-link">Explore the MethScope Website</a></p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">MethScope</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 1) Generate MRMP embedding from your .cg file and MRMP reference</span></span>
+<span><span class="va">example_file</span> <span class="op">&lt;-</span> <span class="st">"example.cg"</span></span>
+<span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="st">"Liu2021_MouseBrain.cm"</span></span>
+<span><span class="va">input_pattern</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/GenerateInput.html">GenerateInput</a></span><span class="op">(</span><span class="va">example_file</span>, <span class="va">reference_pattern</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 2) Predict cell types with a built-in model</span></span>
+<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/PredictCellType.html">PredictCellType</a></span><span class="op">(</span><span class="fu">MethScope</span><span class="fu">:::</span><span class="va">Liu2021_MouseBrain_P1000</span>, <span class="va">input_pattern</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 3) Visualize prediction results</span></span>
+<span><span class="fu"><a href="reference/PlotUMAP.html">PlotUMAP</a></span><span class="op">(</span><span class="va">input_pattern</span>, <span class="va">pred</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="tutorials-and-documentation">Tutorials and documentation<a class="anchor" aria-label="anchor" href="#tutorials-and-documentation"></a>
+</h2>
+<ul>
+<li>Documentation website: <a href="https://zhou-lab.github.io/MethScope/" class="external-link">zhou-lab.github.io/MethScope</a>
+</li>
+<li>End-to-end tutorial: <a href="https://zhou-lab.github.io/MethScope/articles/MethScope-Tutorial.html" class="external-link">MethScope-Tutorial</a>
+</li>
+<li>Building MRMP references: <a href="https://zhou-lab.github.io/MethScope/articles/MethScope-MRMP.html" class="external-link">MethScope-MRMP</a>
+</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="data-resources">Data resources<a class="anchor" aria-label="anchor" href="#data-resources"></a>
+</h2>
+<ul>
+<li>Example and reference data: <a href="https://github.com/zhou-lab/methscope_data" class="external-link">zhou-lab/methscope_data</a>
+</li>
+<li>
+<code>.cg</code> generation and preprocessing: <a href="https://zhou-lab.github.io/YAME/" class="external-link">YAME</a>
+</li>
+<li>Pattern interpretation: <a href="https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html" class="external-link">knowYourCG</a>
+</li>
+</ul>
 </div>
 <div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
-<p>If you use MethScope, kindly cite (coming soon):</p>
-<p>Hongxiang Fu, Chin Nien Lee, Cameron Cloud, Hao Xu, Yanxiang Deng, Wanding Zhou, MethScope: Ultra-fast Analysis of Sparse DNA Methylome via Recurrent Pattern Encoding.</p>
+<p>If you use MethScope, please cite (comming soon):</p>
+<p>Fu H, Xu H, Lee CN, Cloud C, Deng Y, Zhou W.<br><strong>MethScope: Ultra-Fast Analysis of Sparse DNA Methylome via Recurrent Pattern Encoding</strong>.</p>
 </div>
 </div>
-  </main><aside class="col-md-3"><div class="license">
+
+  </main><aside class="col-md-3"><div class="links">
+<h2 data-toc-skip>Links</h2>
+<ul class="list-unstyled">
+<li><a href="https://cloud.r-project.org/package=MethScope" class="external-link">View on CRAN</a></li>
+</ul>
+</div>
+
+<div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
 <li><a href="LICENSE.html">Full license</a></li>

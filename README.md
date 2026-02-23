@@ -1,4 +1,4 @@
-<img src="MethScope.png" alt="MethScope logo" width="72" align="right">
+<img src="man/figures/logo.png" alt="MethScope logo" width="72" align="right">
 
 # MethScope
 
@@ -14,6 +14,26 @@ It supports downstream analysis for:
 ## Why MethScope?
 
 Sparse single-cell and spatial methylome data are difficult to analyze directly. MethScope compresses methylation signals into MRMP-based embeddings so you can run robust and scalable downstream tasks with standard analysis workflows.
+
+## Method overview
+
+<p align="center">
+  <img src="man/figures/logo.png" alt="MethScope workflow overview" width="980">
+</p>
+
+MethScope converts high-dimensional methylation atlas signals into compact MRMP features and applies these features across multiple analysis tasks.
+
+Core workflow:
+- Binarize methylation atlas profiles and consolidate recurrent patterns
+- Select top recurrent methylation patterns (MRMPs)
+- Encode each sample, cell, or pixel into an MRMP-based representation
+- Run downstream modeling for annotation, deconvolution, imputation, and representation learning
+
+Use cases supported in the current pipeline:
+- Cell-type annotation in sparse single-cell methylome profiles
+- Mini-bulk deconvolution for mixed-cell samples
+- Missing-value imputation for sparse CpG measurements
+- Representation learning for clustering and embedding analysis
 
 ## Installation
 
