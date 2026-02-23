@@ -1,5 +1,7 @@
 # MethScope
 
+![MethScope overview](MethScope.png)
+
 **MethScope** is an R package for ultra-fast analysis of sparse DNA methylome data using **Most Recurrent Methylation Patterns (MRMPs)**.
 
 It supports downstream analysis for:
