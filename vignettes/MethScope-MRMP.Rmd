@@ -16,39 +16,64 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Generate MRMP reference
+## Generate an MRMP reference
 
-We provided three reference MRMPs definitions, and if you want to create your own MRMPs definitions, please follow the following tutorial. 
+MethScope includes pre-defined MRMP references, and you can also build your own from a methylation atlas.
 
-1. Download and install **YAME** (https://zhou-lab.github.io/YAME/)
-2. Process you methylation reference file into .cg file
-3. run the following yame rowop code to binarize your input file (default threshold is at 0.5, use -b to adjust threshold if needed)
+### Prerequisites
+
+1. Install **YAME** for `.cg` processing: <https://zhou-lab.github.io/YAME/>
+2. Prepare a reference methylation `.cg` file (for example, an atlas or merged reference panel)
+3. Install and load `MethScope`
+
+```{r, eval=FALSE}
+library(MethScope)
+```
+
+### Step 1: Binarize the reference `.cg` file
+
+Convert methylation proportions into binary strings. The default threshold is 0.5; adjust with `-b` if needed.
 
 ```{bash, eval=FALSE}
 yame rowop example.cg -o binstring > example_binstring
 ```
 
-4. Generate the reference definition (default min CG per MRMP is 50, adjust the threshold if needed with min_CG)
+### Step 2: Build MRMP pattern definitions
+
+Use `GenerateReference()` to identify recurrent patterns.  
+`min_CG` controls the minimum CpGs per MRMP (default: `50`).
 
 ```{r, eval=FALSE}
-GenerateReference(example_binstring)
+GenerateReference(binary_file = "example_binstring", min_CG = 50)
 ```
 
-5. Pack the generated pattern.txt into .cm file which can be directly used as reference_pattern in our GenerateInput function.
+This step generates a `patterns.txt` file.
+
+### Step 3: Pack patterns into a `.cm` reference
+
+Pack `patterns.txt` into a `.cm` file that can be passed as `reference_pattern` in `GenerateInput()`.
 
 ```{bash, eval=FALSE}
 yame pack -f s patterns.txt patterns.cm
 ```
 
-## Generate MRMPs reference from cell type pseudobulks
+## Build MRMP references from cell-type pseudobulks
 
-It might be useful to generate the MRMPs reference from cell type pseudobulks if the cell type label is available. 
+If cell-type labels are available, pseudobulked profiles can produce robust cell-type-informed MRMP references.
 
-1. Obtain a txt file that contains sample names belong to oen cell type that you want to merge together from the cell type label.
-2. Generate the pseudobulk profile using yame subset and rowop
+### Step 1: Create pseudobulk profiles per cell type
+
+Prepare a text file (`samples.txt`) containing sample IDs for one cell type, then aggregate with `musum`.
 
 ```{bash, eval=FALSE}
 yame subset -l samples.txt example.cg | yame rowop -o musum - example_pseudobulk.cg
 ```
 
-Please check our full code GenerateReference.sh in our analysis folder (https://github.com/zhou-lab/MethScope) as a reference for in parallel process multiple cell types. After obtaining the pseudobulk profile, it will be the same steps as above to obtain the MRMPs definition file.
+### Step 2: Repeat per cell type and build MRMPs
+
+Run the same workflow above (`binstring -> GenerateReference -> yame pack`) on each pseudobulk or combined pseudobulk panel.
+
+For a full multi-cell-type script, see:
+<https://github.com/zhou-lab/MethScope/blob/main/analysis/GenerateReference.sh>
+
+After generating `patterns.cm`, use it as the custom MRMP reference in downstream MethScope analyses.
