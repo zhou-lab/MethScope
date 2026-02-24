@@ -11,7 +11,7 @@ It supports downstream analysis for:
 
 ## Why MethScope?
 
-Sparse single-cell and spatial methylome data are difficult to analyze directly. MethScope compresses methylation signals into MRMP-based embeddings so you can run robust and scalable downstream tasks with standard analysis workflows.
+Sparse single-cell and spatial methylome data are often too sparse to analyze directly. MethScope compresses methylation signals into MRMP-based embeddings so you can run robust and scalable downstream tasks with standard analysis workflows.
 
 ## Method overview
 
@@ -80,5 +80,5 @@ PlotUMAP(input_pattern, pred)
 
 If you use MethScope, please cite (comming soon):
 
-Fu H, Xu H, Lee CN, Cloud C, Deng Y, Zhou W.  
+Fu H*, Xu H*, Lee CN, Cloud C, Deng Y, Zhou W.  
 **MethScope: Ultra-Fast Analysis of Sparse DNA Methylome via Recurrent Pattern Encoding**.
