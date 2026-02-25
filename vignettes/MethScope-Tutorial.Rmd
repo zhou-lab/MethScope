@@ -42,9 +42,22 @@ Use `GenerateInput()` to transform a query `.cg` file into a sample-by-MRMP matr
 
 ```{r, eval=FALSE}
 # Paths to your .cg and .cm files
-example_file <- "example.cg"
-reference_pattern <- "Liu2021_MouseBrain.cm"
+example_file <- "/home/fuh1/cell_type/Tool/MethScope/inst/extdata/example.cg"
+reference_pattern <- "/home/fuh1/cell_type/Tool/MethScope/inst/extdata/Liu2021_MouseBrain.cm"
 input_pattern <- GenerateInput(example_file, reference_pattern)
+```
+
+Inspect the resulting sample-by-pattern matrix:
+
+```{r, eval=FALSE}
+# full preview
+head(input_pattern)
+
+# optional: focus on the first 10 MRMP columns for readability
+head(input_pattern[, 1:10])
+
+# check dimensions (samples x patterns)
+dim(input_pattern)
 ```
 
 For large datasets, split `.cg` files and process in parallel:
