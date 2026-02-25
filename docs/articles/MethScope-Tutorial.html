@@ -81,85 +81,119 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">MethScope</span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
-<h2 id="generate-cellpixelsample-mrmps-embedding">Generate cell/pixel/sample MRMPs’ embedding<a class="anchor" aria-label="anchor" href="#generate-cellpixelsample-mrmps-embedding"></a>
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>In the below code, we will demonstrate how to genate the cell by
-MRMPs matrix using our example.cg file, please check out our (<a href="https://github.com/zhou-lab/methscope_data" class="external-link uri">https://github.com/zhou-lab/methscope_data</a>). Replace it
-with your own .cg data file path, and for more details about how to
-create .cg file, please check out (<a href="https://zhou-lab.github.io/YAME/" class="external-link uri">https://zhou-lab.github.io/YAME/</a>). We provided three
-reference MRMPs definitions (mouse brain and human pan tissues), please
-check out our MRMPs reference tutorial for creating your own
-reference.</p>
+<p>This tutorial demonstrates a standard MethScope workflow:</p>
+<ul>
+<li>Generate MRMP embeddings from <code>.cg</code> input</li>
+<li>Perform cell-type annotation with a pre-trained model</li>
+<li>Train a custom model</li>
+<li>Visualize prediction quality</li>
+<li>Run deconvolution and unsupervised clustering</li>
+</ul>
+<p>Data and preprocessing resources:</p>
+<ul>
+<li>Example/reference data: <a href="https://github.com/zhou-lab/methscope_data" class="external-link uri">https://github.com/zhou-lab/methscope_data</a>
+</li>
+<li>Generate <code>.cg</code> input files: <a href="https://zhou-lab.github.io/YAME/" class="external-link uri">https://zhou-lab.github.io/YAME/</a>
+</li>
+<li>Interpret MRMP patterns: <a href="https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html" class="external-link uri">https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html</a>
+</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="generate-cellpixelsample-mrmp-embeddings">1) Generate cell/pixel/sample MRMP embeddings<a class="anchor" aria-label="anchor" href="#generate-cellpixelsample-mrmp-embeddings"></a>
+</h2>
+<p>Use <code><a href="../reference/GenerateInput.html">GenerateInput()</a></code> to transform a query
+<code>.cg</code> file into a sample-by-MRMP matrix.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">#path to your .cg and .cm files</span></span>
+<code class="sourceCode R"><span><span class="co"># Paths to your .cg and .cm files</span></span>
 <span><span class="va">example_file</span> <span class="op">&lt;-</span> <span class="st">"example.cg"</span></span>
 <span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="st">"Liu2021_MouseBrain.cm"</span></span>
 <span><span class="va">input_pattern</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GenerateInput.html">GenerateInput</a></span><span class="op">(</span><span class="va">example_file</span>, <span class="va">reference_pattern</span><span class="op">)</span></span></code></pre></div>
-<p>If your input data contains many cells, we recommend splitting your
-.cg files and run the above code in parallel to improve the runtime. To
-split your .cg files, please refer to (<a href="https://zhou-lab.github.io/YAME/docs/subset.html" class="external-link uri">https://zhou-lab.github.io/YAME/docs/subset.html</a>). For
-understanding of each pattern, please check out our knowYourCG tool: <a href="https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html" class="external-link uri">https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html</a></p>
+<p>For large datasets, split <code>.cg</code> files and process in
+parallel: <a href="https://zhou-lab.github.io/YAME/docs/subset.html" class="external-link uri">https://zhou-lab.github.io/YAME/docs/subset.html</a></p>
 </div>
 <div class="section level2">
-<h2 id="perform-cell-type-annotation">Perform cell type annotation<a class="anchor" aria-label="anchor" href="#perform-cell-type-annotation"></a>
+<h2 id="perform-cell-type-annotation">2) Perform cell-type annotation<a class="anchor" aria-label="anchor" href="#perform-cell-type-annotation"></a>
 </h2>
-<p>To use our pre-trained model, simply use PredictCellType function as
-shown below for ultra fast cell type annotation. We provided two built
-in pre-trained models for mouse brain: Liu2021_MouseBrain_P1000 and
-human tissue atlas: Zhou2025_HumanAtlas_P1000.</p>
+<p>Use a built-in pre-trained model for fast annotation. Available
+built-in examples include:</p>
+<ul>
+<li><code>MethScope:::Liu2021_MouseBrain_P1000</code></li>
+<li><code>MethScope:::Zhou2025_HumanAtlas_P1000</code></li>
+</ul>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">prediction_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PredictCellType.html">PredictCellType</a></span><span class="op">(</span><span class="fu">MethScope</span><span class="fu">:::</span><span class="va">Liu2021_MouseBrain_P1000</span>,<span class="va">input_pattern</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">prediction_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PredictCellType.html">PredictCellType</a></span><span class="op">(</span></span>
+<span>  <span class="fu">MethScope</span><span class="fu">:::</span><span class="va">Liu2021_MouseBrain_P1000</span>,</span>
+<span>  <span class="va">input_pattern</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="train-the-classification-model">Train the classification model<a class="anchor" aria-label="anchor" href="#train-the-classification-model"></a>
+<h2 id="train-a-custom-classification-model">3) Train a custom classification model<a class="anchor" aria-label="anchor" href="#train-a-custom-classification-model"></a>
 </h2>
-<p>To train your own model, use our Input_training function with the
-cell_type_label vector that correspond to each row of your input_pattern
-matrix. You can provide your own list for xgb model parameters or set
-cross_validation = T to find the optimal parameter.</p>
+<p>Train your own XGBoost model using known labels.
+<code>cell_type_label</code> must align with rows of
+<code>input_pattern</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">trained_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Input_training.html">Input_training</a></span><span class="op">(</span><span class="va">input_pattern</span>,<span class="va">cell_type_label</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="visualize-the-prediction-result">Visualize the prediction result<a class="anchor" aria-label="anchor" href="#visualize-the-prediction-result"></a>
-</h2>
-<p>We provided some built in functions for visualizing the prediction
-results</p>
+<code class="sourceCode R"><span><span class="va">trained_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Input_training.html">Input_training</a></span><span class="op">(</span></span>
+<span>  <span class="va">input_pattern</span>,</span>
+<span>  <span class="va">cell_type_label</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>You can also tune hyperparameters automatically:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">umap_plot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PlotUMAP.html">PlotUMAP</a></span><span class="op">(</span><span class="va">input_pattern</span>,<span class="va">prediction_result</span><span class="op">)</span></span>
-<span><span class="co">### cell_type_label is the true cell type label</span></span>
-<span><span class="fu"><a href="../reference/PlotConfusion.html">PlotConfusion</a></span><span class="op">(</span><span class="va">prediction_result</span>,<span class="va">cell_type_label</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/PlotF1.html">PlotF1</a></span><span class="op">(</span><span class="va">prediction_result</span>,<span class="va">cell_type_label</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">trained_model_cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Input_training.html">Input_training</a></span><span class="op">(</span></span>
+<span>  <span class="va">input_pattern</span>,</span>
+<span>  <span class="va">cell_type_label</span>,</span>
+<span>  cross_validation <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="cell-type-deconvolution">Cell type deconvolution<a class="anchor" aria-label="anchor" href="#cell-type-deconvolution"></a>
+<h2 id="visualize-prediction-results">4) Visualize prediction results<a class="anchor" aria-label="anchor" href="#visualize-prediction-results"></a>
 </h2>
-<p>Cell type proportions can be estimated with our nnls_deconv
-functions, to obtain the reference input, please check out our (<a href="https://github.com/zhou-lab/methscope_data" class="external-link uri">https://github.com/zhou-lab/methscope_data</a>) which stores
-the reference patterns.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">umap_plot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PlotUMAP.html">PlotUMAP</a></span><span class="op">(</span><span class="va">input_pattern</span>, <span class="va">prediction_result</span><span class="op">)</span></span>
+<span><span class="co"># cell_type_label is the true label vector</span></span>
+<span><span class="fu"><a href="../reference/PlotConfusion.html">PlotConfusion</a></span><span class="op">(</span><span class="va">prediction_result</span>, <span class="va">cell_type_label</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/PlotF1.html">PlotF1</a></span><span class="op">(</span><span class="va">prediction_result</span>, <span class="va">cell_type_label</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="cell-type-deconvolution">5) Cell-type deconvolution<a class="anchor" aria-label="anchor" href="#cell-type-deconvolution"></a>
+</h2>
+<p>Estimate cell-type proportions using <code><a href="../reference/nnls_deconv.html">nnls_deconv()</a></code>.
+Reference matrices are available in: <a href="https://github.com/zhou-lab/methscope_data" class="external-link uri">https://github.com/zhou-lab/methscope_data</a></p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="st">"Liu2021_MouseBrain.cm"</span></span>
 <span><span class="va">reference_input</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"2021Liu_reference_pattern.rds"</span><span class="op">)</span></span>
-<span><span class="va">cell_proportion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nnls_deconv.html">nnls_deconv</a></span><span class="op">(</span><span class="va">reference_input</span>,<span class="va">input_pattern</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">cell_proportion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nnls_deconv.html">nnls_deconv</a></span><span class="op">(</span><span class="va">reference_input</span>, <span class="va">input_pattern</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="unsupervised-clustering">Unsupervised clustering<a class="anchor" aria-label="anchor" href="#unsupervised-clustering"></a>
+<h2 id="unsupervised-clustering-seurat-example">6) Unsupervised clustering (Seurat example)<a class="anchor" aria-label="anchor" href="#unsupervised-clustering-seurat-example"></a>
 </h2>
-<p>After obtaining the cell by MRMPs matrix input_pattern, simply use it
-to cluster cells using existing pipeline. Here is a demonstration using
-Seurat for clustering and UMAP plotting</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<p>After generating <code>input_pattern</code>, you can cluster with
+standard single-cell pipelines.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">CreateSeuratObject</span><span class="op">(</span>counts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">input_pattern</span><span class="op">)</span>, assay <span class="op">=</span> <span class="st">"DNAm"</span><span class="op">)</span></span>
 <span><span class="fu">VariableFeatures</span><span class="op">(</span><span class="va">Pattern.obj</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">Pattern.obj</span><span class="op">[[</span><span class="st">'DNAm'</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="fu">DefaultAssay</span><span class="op">(</span><span class="va">Pattern.obj</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="st">"DNAm"</span></span>
 <span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">NormalizeData</span><span class="op">(</span><span class="va">Pattern.obj</span>, assay <span class="op">=</span> <span class="st">"DNAm"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">ScaleData</span><span class="op">(</span><span class="va">Pattern.obj</span>, assay <span class="op">=</span> <span class="st">"DNAm"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="co">### Can directly use the initial counts matrix</span></span>
+<span><span class="co"># You can also directly use the initial counts matrix</span></span>
 <span><span class="va">Pattern.obj</span><span class="op">@</span><span class="va">assays</span><span class="op">$</span><span class="va">DNAm</span><span class="op">@</span><span class="va">layers</span><span class="op">$</span><span class="va">scale.data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">Pattern.obj</span><span class="op">@</span><span class="va">assays</span><span class="op">$</span><span class="va">DNAm</span><span class="op">@</span><span class="va">layers</span><span class="op">$</span><span class="va">counts</span><span class="op">)</span></span>
-<span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">RunPCA</span><span class="op">(</span><span class="va">Pattern.obj</span>,assay<span class="op">=</span><span class="st">"DNAm"</span>,reduction.name <span class="op">=</span> <span class="st">'mpca'</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">RunPCA</span><span class="op">(</span><span class="va">Pattern.obj</span>, assay <span class="op">=</span> <span class="st">"DNAm"</span>, reduction.name <span class="op">=</span> <span class="st">"mpca"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">FindNeighbors</span><span class="op">(</span><span class="va">Pattern.obj</span>, reduction <span class="op">=</span> <span class="st">"mpca"</span>, dims <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">)</span></span>
 <span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">FindClusters</span><span class="op">(</span><span class="va">Pattern.obj</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span>, resolution <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span></span>
-<span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">RunUMAP</span><span class="op">(</span><span class="va">Pattern.obj</span>, reduction <span class="op">=</span> <span class="st">"mpca"</span>,  reduction.name <span class="op">=</span> <span class="st">"meth.umap"</span>, dims <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu">RunUMAP</span><span class="op">(</span><span class="va">Pattern.obj</span>, reduction <span class="op">=</span> <span class="st">"mpca"</span>, reduction.name <span class="op">=</span> <span class="st">"meth.umap"</span>, dims <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="related-resources">Related resources<a class="anchor" aria-label="anchor" href="#related-resources"></a>
+</h2>
+<ul>
+<li>MRMP reference tutorial: <a href="https://zhou-lab.github.io/MethScope/articles/MethScope-MRMP.html" class="external-link uri">https://zhou-lab.github.io/MethScope/articles/MethScope-MRMP.html</a>
+</li>
+<li>Full package site: <a href="https://zhou-lab.github.io/MethScope/" class="external-link uri">https://zhou-lab.github.io/MethScope/</a>
+</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>

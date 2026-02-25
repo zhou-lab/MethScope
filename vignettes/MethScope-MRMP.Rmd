@@ -73,7 +73,7 @@ yame subset -l samples.txt example.cg | yame rowop -o musum - example_pseudobulk
 
 Run the same workflow above (`binstring -> GenerateReference -> yame pack`) on each pseudobulk or combined pseudobulk panel.
 
-For a full multi-cell-type script, see:
+For running a full parallelized multi-cell-type script, please refer to:
 <https://github.com/zhou-lab/MethScope/blob/main/analysis/GenerateReference.sh>
 
 After generating `patterns.cm`, use it as the custom MRMP reference in downstream MethScope analyses.

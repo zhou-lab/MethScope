@@ -20,70 +20,113 @@ knitr::opts_chunk$set(
 library(MethScope)
 ```
 
-## Generate cell/pixel/sample MRMPs' embedding
+## Overview
 
-In the below code, we will demonstrate how to genate the cell by MRMPs matrix using our example.cg file, please check out our (https://github.com/zhou-lab/methscope_data). Replace it with your own .cg data file path, and for more details about how to create .cg file, please check out (https://zhou-lab.github.io/YAME/). We provided three reference MRMPs definitions (mouse brain and human pan tissues), please check out our MRMPs reference tutorial for creating your own reference.  
+This tutorial demonstrates a standard MethScope workflow:
 
-```{r,eval=FALSE}
-#path to your .cg and .cm files
+- Generate MRMP embeddings from `.cg` input
+- Perform cell-type annotation with a pre-trained model
+- Train a custom model
+- Visualize prediction quality
+- Run deconvolution and unsupervised clustering
+
+Data and preprocessing resources:
+
+- Example/reference data: <https://github.com/zhou-lab/methscope_data>
+- Generate `.cg` input files: <https://zhou-lab.github.io/YAME/>
+- Interpret MRMP patterns: <https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html>
+
+## 1) Generate cell/pixel/sample MRMP embeddings
+
+Use `GenerateInput()` to transform a query `.cg` file into a sample-by-MRMP matrix.
+
+```{r, eval=FALSE}
+# Paths to your .cg and .cm files
 example_file <- "example.cg"
 reference_pattern <- "Liu2021_MouseBrain.cm"
 input_pattern <- GenerateInput(example_file, reference_pattern)
 ```
 
-If your input data contains many cells, we recommend splitting your .cg files and run the above code in parallel to improve the runtime. To split your .cg files, please refer to (https://zhou-lab.github.io/YAME/docs/subset.html). For understanding of each pattern, please check out our knowYourCG tool: https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html
+For large datasets, split `.cg` files and process in parallel:
+<https://zhou-lab.github.io/YAME/docs/subset.html>
 
-## Perform cell type annotation
+## 2) Perform cell-type annotation
 
-To use our pre-trained model, simply use PredictCellType function as shown below for ultra fast cell type annotation. We provided two built in pre-trained models for mouse brain: Liu2021_MouseBrain_P1000 and human tissue atlas: Zhou2025_HumanAtlas_P1000.
+Use a built-in pre-trained model for fast annotation.
+Available built-in examples include:
 
-```{r,eval=FALSE}
-prediction_result <- PredictCellType(MethScope:::Liu2021_MouseBrain_P1000,input_pattern)
+- `MethScope:::Liu2021_MouseBrain_P1000`
+- `MethScope:::Zhou2025_HumanAtlas_P1000`
+
+```{r, eval=FALSE}
+prediction_result <- PredictCellType(
+  MethScope:::Liu2021_MouseBrain_P1000,
+  input_pattern
+)
 ```
 
-## Train the classification model
+## 3) Train a custom classification model
 
-To train your own model, use our Input_training function with the cell_type_label vector that correspond to each row of your input_pattern matrix. You can provide your own list for xgb model parameters or set cross_validation = T to find the optimal parameter. 
+Train your own XGBoost model using known labels.
+`cell_type_label` must align with rows of `input_pattern`.
 
-```{r,eval=FALSE}
-trained_model <- Input_training(input_pattern,cell_type_label)
+```{r, eval=FALSE}
+trained_model <- Input_training(
+  input_pattern,
+  cell_type_label
+)
 ```
 
-## Visualize the prediction result
+You can also tune hyperparameters automatically:
 
-We provided some built in functions for visualizing the prediction results
-
-```{r,eval=FALSE}
-umap_plot <- PlotUMAP(input_pattern,prediction_result)
-### cell_type_label is the true cell type label
-PlotConfusion(prediction_result,cell_type_label)
-PlotF1(prediction_result,cell_type_label)
+```{r, eval=FALSE}
+trained_model_cv <- Input_training(
+  input_pattern,
+  cell_type_label,
+  cross_validation = TRUE
+)
 ```
 
-## Cell type deconvolution
+## 4) Visualize prediction results
 
-Cell type proportions can be estimated with our nnls_deconv functions, to obtain the reference input, please check out our (https://github.com/zhou-lab/methscope_data) which stores the reference patterns.
+```{r, eval=FALSE}
+umap_plot <- PlotUMAP(input_pattern, prediction_result)
+# cell_type_label is the true label vector
+PlotConfusion(prediction_result, cell_type_label)
+PlotF1(prediction_result, cell_type_label)
+```
 
-```{r,eval=FALSE}
+## 5) Cell-type deconvolution
+
+Estimate cell-type proportions using `nnls_deconv()`.
+Reference matrices are available in:
+<https://github.com/zhou-lab/methscope_data>
+
+```{r, eval=FALSE}
 reference_pattern <- "Liu2021_MouseBrain.cm"
 reference_input <- readRDS("2021Liu_reference_pattern.rds")
-cell_proportion <- nnls_deconv(reference_input,input_pattern)
+cell_proportion <- nnls_deconv(reference_input, input_pattern)
 ```
 
-## Unsupervised clustering
+## 6) Unsupervised clustering (Seurat example)
 
-After obtaining the cell by MRMPs matrix input_pattern, simply use it to cluster cells using existing pipeline. Here is a demonstration using Seurat for clustering and UMAP plotting
+After generating `input_pattern`, you can cluster with standard single-cell pipelines.
 
-```{r,eval=FALSE}
+```{r, eval=FALSE}
 Pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
 VariableFeatures(Pattern.obj) <- rownames(Pattern.obj[['DNAm']])
 DefaultAssay(Pattern.obj) <- "DNAm"
 Pattern.obj <- NormalizeData(Pattern.obj, assay = "DNAm", verbose = FALSE)
 Pattern.obj <- ScaleData(Pattern.obj, assay = "DNAm", verbose = FALSE)
-### Can directly use the initial counts matrix
+# You can also directly use the initial counts matrix
 Pattern.obj@assays$DNAm@layers$scale.data <- as.matrix(Pattern.obj@assays$DNAm@layers$counts)
-Pattern.obj <- RunPCA(Pattern.obj,assay="DNAm",reduction.name = 'mpca', verbose = FALSE)
+Pattern.obj <- RunPCA(Pattern.obj, assay = "DNAm", reduction.name = "mpca", verbose = FALSE)
 Pattern.obj <- FindNeighbors(Pattern.obj, reduction = "mpca", dims = 1:30)
 Pattern.obj <- FindClusters(Pattern.obj, verbose = FALSE, resolution = 0.7)
-Pattern.obj <- RunUMAP(Pattern.obj, reduction = "mpca",  reduction.name = "meth.umap", dims = 1:30)
+Pattern.obj <- RunUMAP(Pattern.obj, reduction = "mpca", reduction.name = "meth.umap", dims = 1:30)
 ```
+
+## Related resources
+
+- MRMP reference tutorial: <https://zhou-lab.github.io/MethScope/articles/MethScope-MRMP.html>
+- Full package site: <https://zhou-lab.github.io/MethScope/>
