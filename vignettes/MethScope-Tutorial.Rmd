@@ -58,7 +58,7 @@ Example output (`head(input_pattern[, 1:9])`):
 | GSM4014298 | 0.947 | 0.016 | 0.926 | 0.922 | 0.909 | 0.923 | 0.863 | 0.918 | 0.894 |
 | GSM4016157 | 0.929 | 0.016 | 0.887 | 0.881 | 0.859 | 0.880 | 0.904 | 0.882 | 0.825 |
 
-For large datasets, split `.cg` files and process in parallel:
+For really large datasets, please consider split `.cg` files and process in parallel:
 <https://zhou-lab.github.io/YAME/docs/subcommands/YAME_subset.html>
 
 ## 2) Perform cell-type annotation
@@ -110,15 +110,9 @@ PlotF1(prediction_result, cell_type_label)
 Example visualization outputs:
 
 <p align="center">
-  <img src="figures/tutorial_umap.png" alt="UMAP visualization from PlotUMAP" width="960">
-</p>
-
-<p align="center">
-  <img src="figures/tutorial_confusion.png" alt="Confusion matrix from PlotConfusion" width="960">
-</p>
-
-<p align="center">
-  <img src="figures/tutorial_f1.png" alt="F1 score plot from PlotF1" width="960">
+  <img src="figures/tutorial_umap.png" alt="UMAP visualization from PlotUMAP" width="32%">
+  <img src="figures/tutorial_confusion.png" alt="Confusion matrix from PlotConfusion" width="32%">
+  <img src="figures/tutorial_f1.png" alt="F1 score plot from PlotF1" width="32%">
 </p>
 
 ## 5) Cell-type deconvolution
