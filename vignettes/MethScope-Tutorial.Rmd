@@ -107,8 +107,6 @@ PlotConfusion(prediction_result, cell_type_label)
 PlotF1(prediction_result, cell_type_label)
 ```
 
-Example visualization outputs:
-
 <p align="center">
   <img src="figures/tutorial_umap.png" alt="UMAP visualization from PlotUMAP" width="32%">
   <img src="figures/tutorial_confusion.png" alt="Confusion matrix from PlotConfusion" width="32%">
