@@ -47,19 +47,6 @@ reference_pattern <- "/home/fuh1/cell_type/Tool/MethScope/inst/extdata/Liu2021_M
 input_pattern <- GenerateInput(example_file, reference_pattern)
 ```
 
-Inspect the resulting sample-by-pattern matrix:
-
-```{r, eval=FALSE}
-# full preview
-head(input_pattern)
-
-# optional: focus on the first 10 MRMP columns for readability
-head(input_pattern[, 1:10])
-
-# check dimensions (samples x patterns)
-dim(input_pattern)
-```
-
 Example output (`head(input_pattern[, 1:9])`):
 
 | Sample     | P1    | P2    | P3    | P4    | P5    | P6    | P7    | P8    | P9    |
@@ -72,7 +59,7 @@ Example output (`head(input_pattern[, 1:9])`):
 | GSM4016157 | 0.929 | 0.016 | 0.887 | 0.881 | 0.859 | 0.880 | 0.904 | 0.882 | 0.825 |
 
 For large datasets, split `.cg` files and process in parallel:
-<https://zhou-lab.github.io/YAME/docs/subset.html>
+<https://zhou-lab.github.io/YAME/docs/subcommands/YAME_subset.html>
 
 ## 2) Perform cell-type annotation
 
@@ -91,7 +78,7 @@ prediction_result <- PredictCellType(
 
 ## 3) Train a custom classification model
 
-Train your own XGBoost model using known labels.
+You can train your own XGBoost model using known labels.
 `cell_type_label` must align with rows of `input_pattern`.
 
 ```{r, eval=FALSE}
@@ -101,7 +88,7 @@ trained_model <- Input_training(
 )
 ```
 
-You can also tune hyperparameters automatically:
+You can also tune hyperparameters automatically or provide your own list of xgb_parameters:
 
 ```{r, eval=FALSE}
 trained_model_cv <- Input_training(
@@ -120,10 +107,24 @@ PlotConfusion(prediction_result, cell_type_label)
 PlotF1(prediction_result, cell_type_label)
 ```
 
+Example visualization outputs:
+
+<p align="center">
+  <img src="figures/tutorial_umap.png" alt="UMAP visualization from PlotUMAP" width="960">
+</p>
+
+<p align="center">
+  <img src="figures/tutorial_confusion.png" alt="Confusion matrix from PlotConfusion" width="960">
+</p>
+
+<p align="center">
+  <img src="figures/tutorial_f1.png" alt="F1 score plot from PlotF1" width="960">
+</p>
+
 ## 5) Cell-type deconvolution
 
 Estimate cell-type proportions using `nnls_deconv()`.
-Reference matrices are available in:
+Some reference matrix examples are available in:
 <https://github.com/zhou-lab/methscope_data>
 
 ```{r, eval=FALSE}
@@ -137,6 +138,7 @@ cell_proportion <- nnls_deconv(reference_input, input_pattern)
 After generating `input_pattern`, you can cluster with standard single-cell pipelines.
 
 ```{r, eval=FALSE}
+library(Seurat)
 Pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
 VariableFeatures(Pattern.obj) <- rownames(Pattern.obj[['DNAm']])
 DefaultAssay(Pattern.obj) <- "DNAm"
