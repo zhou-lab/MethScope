@@ -258,7 +258,6 @@ list of xgb_parameters:</p>
 <span><span class="co"># cell_type_label is the true label vector</span></span>
 <span><span class="fu"><a href="../reference/PlotConfusion.html">PlotConfusion</a></span><span class="op">(</span><span class="va">prediction_result</span>, <span class="va">cell_type_label</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/PlotF1.html">PlotF1</a></span><span class="op">(</span><span class="va">prediction_result</span>, <span class="va">cell_type_label</span><span class="op">)</span></span></code></pre></div>
-<p>Example visualization outputs:</p>
 <p align="center">
 <img src="figures/tutorial_umap.png" alt="UMAP visualization from PlotUMAP" width="32%"><img src="figures/tutorial_confusion.png" alt="Confusion matrix from PlotConfusion" width="32%"><img src="figures/tutorial_f1.png" alt="F1 score plot from PlotF1" width="32%"></p>
 </div>
@@ -290,6 +289,76 @@ standard single-cell pipelines.</p>
 <span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/FindNeighbors.html" class="external-link">FindNeighbors</a></span><span class="op">(</span><span class="va">Pattern.obj</span>, reduction <span class="op">=</span> <span class="st">"mpca"</span>, dims <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">)</span></span>
 <span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/FindClusters.html" class="external-link">FindClusters</a></span><span class="op">(</span><span class="va">Pattern.obj</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span>, resolution <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span></span>
 <span><span class="va">Pattern.obj</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/RunUMAP.html" class="external-link">RunUMAP</a></span><span class="op">(</span><span class="va">Pattern.obj</span>, reduction <span class="op">=</span> <span class="st">"mpca"</span>, reduction.name <span class="op">=</span> <span class="st">"meth.umap"</span>, dims <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="upscaling-network-10k-cpg-block-example">7) Upscaling Network (10k-CpG block example)<a class="anchor" aria-label="anchor" href="#upscaling-network-10k-cpg-block-example"></a>
+</h2>
+<p>This section describes a compact workflow to upscale MRMP embeddings
+to CpG-level methylation predictions within a genomic block.</p>
+<div class="section level3">
+<h3 id="prepare-model-input-x-and-target-y">7.1 Prepare model input (<code>x</code>) and target
+(<code>y</code>)<a class="anchor" aria-label="anchor" href="#prepare-model-input-x-and-target-y"></a>
+</h3>
+<p><code>x</code> is the MRMP embedding matrix (samples x
+features).<br><code>y</code> is the CpG-level ground truth matrix for the same samples
+(samples x CpGs).</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># create masked replicates (masked CpGs encoded as 2)</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="co"># this generate 100 replicates per original sample, each of the 10 output files contains 10 replicates per sample</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a><span class="ex">parallel</span> <span class="at">-j</span> 24 <span class="st">'yame dsample -p {} -s {} -r 10 -N 29000 -o example_rep{}.cg example.cg'</span> ::: <span class="dt">{</span><span class="dv">1</span><span class="dt">..</span><span class="dv">10</span><span class="dt">}</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="co"># summarize MRMP features per replicate</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="ex">parallel</span> <span class="at">-j</span> 24 <span class="st">'yame summary -m patterns.cm example_rep{}.cg | cut -f2,4,10 | doawk | sort -k1,1 -k2,2n | bedtools groupby -g 1 -c 3 -o collapse &gt; example_rep{}_mrmp.txt'</span> ::: <span class="dt">{</span><span class="dv">1</span><span class="dt">..</span><span class="dv">10</span><span class="dt">}</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="fu">cat</span> example_rep<span class="pp">*</span>_mrmp.txt <span class="op">&gt;</span> input_pattern.txt</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co"># whole-genome .cg file can be divided into 10k-CpG blocks, and then CpG-level truth from .cg</span></span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="ex">parallel</span> <span class="at">-j</span> 72 <span class="st">'yame rowsub -I {}_10000 example.cg | yame unpack -a - &gt;truth/example_{}.txt'</span> ::: <span class="dt">{</span><span class="dv">0</span><span class="dt">..</span><span class="dv">2940</span><span class="dt">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span><span class="st">"input_pattern.txt"</span>, header <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span><span class="st">"example_0.txt"</span>, header <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>  <span class="co"># samples x CpGs</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="train-decoder-python">7.2 Train decoder (Python)<a class="anchor" aria-label="anchor" href="#train-decoder-python"></a>
+</h3>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>import torch</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>import torch.nn as nn</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>class <span class="fu">BottleneckDecoder</span>(nn.Module)<span class="sc">:</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>    def <span class="fu">__init__</span>(self, <span class="at">input_dim=</span>num_of_patterns, <span class="at">hidden_dim=</span><span class="dv">512</span>, <span class="at">output_dim=</span><span class="dv">10000</span>)<span class="sc">:</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>        <span class="fu">super</span>()<span class="fu">.__init__</span>()</span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>        self.net <span class="ot">=</span> <span class="fu">nn.Sequential</span>(</span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>            <span class="fu">nn.Linear</span>(input_dim, hidden_dim),</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>            <span class="fu">nn.ReLU</span>(),</span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a>            <span class="fu">nn.BatchNorm1d</span>(hidden_dim),</span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a>            <span class="fu">nn.Linear</span>(hidden_dim, output_dim)</span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a>        )</span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a>    def <span class="fu">forward</span>(self, x)<span class="sc">:</span></span>
+<span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a>        return <span class="fu">self.net</span>(x)</span></code></pre></div>
+<p>Recommended trainning setup:</p>
+<ul>
+<li>Loss: masked BCEWithLogitsLoss (ignore entries where label is
+2)</li>
+<li>Optimizer: Adam (lr = 1e-3, weight_decay = 1e-5)</li>
+<li>Scheduler: ReduceLROnPlateau</li>
+<li>Model selection: run 3 epoches and save checkpoint with best
+validation</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="evaluate">7.3 Evaluate<a class="anchor" aria-label="anchor" href="#evaluate"></a>
+</h3>
+<p>After training:<br>
+1. Run inference on the test set.<br>
+2. Apply sigmoid to logits to obtain probabilities.<br>
+3. Compute metrics on valid positions only (Accuracy, MAE, AUPRC).<br>
+4. Save predicted probabilities to predictions.csv for downstream R
+visualization.</p>
+<p>Notes<br>
+- For whole-genome analysis, perform block-wise upscaling in parallel to
+improve computational efficiency.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="related-resources">Related resources<a class="anchor" aria-label="anchor" href="#related-resources"></a>
