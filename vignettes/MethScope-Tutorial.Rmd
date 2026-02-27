@@ -144,6 +144,71 @@ Pattern.obj <- FindClusters(Pattern.obj, verbose = FALSE, resolution = 0.7)
 Pattern.obj <- RunUMAP(Pattern.obj, reduction = "mpca", reduction.name = "meth.umap", dims = 1:30)
 ```
 
+## 7) Upscaling Network (10k-CpG block example)
+
+This section describes a compact workflow to upscale MRMP embeddings to CpG-level methylation predictions within a genomic block.
+
+### 7.1 Prepare model input (`x`) and target (`y`)
+
+`x` is the MRMP embedding matrix (samples x features).  
+`y` is the CpG-level ground truth matrix for the same samples (samples x CpGs).
+
+```{bash, eval=FALSE}
+# create masked replicates (masked CpGs encoded as 2)
+# this generate 100 replicates per original sample, each of the 10 output files contains 10 replicates per sample
+parallel -j 24 'yame dsample -p {} -s {} -r 10 -N 29000 -o example_rep{}.cg example.cg' ::: {1..10}
+
+# summarize MRMP features per replicate
+parallel -j 24 'yame summary -m patterns.cm example_rep{}.cg | cut -f2,4,10 | doawk | sort -k1,1 -k2,2n | bedtools groupby -g 1 -c 3 -o collapse > example_rep{}_mrmp.txt' ::: {1..10}
+
+cat example_rep*_mrmp.txt > input_pattern.txt
+
+# whole-genome .cg file can be divided into 10k-CpG blocks, and then CpG-level truth from .cg
+parallel -j 72 'yame rowsub -I {}_10000 example.cg | yame unpack -a - >truth/example_{}.txt' ::: {0..2940}
+```
+
+```{r, eval=FALSE}
+x <- read.table("input_pattern.txt", header = FALSE)
+
+y <- read.table("example_0.txt", header = FALSE)
+y <- t(y)  # samples x CpGs
+```
+
+### 7.2 Train decoder (Python)
+```{r, eval=FALSE}
+import torch
+import torch.nn as nn
+
+class BottleneckDecoder(nn.Module):
+    def __init__(self, input_dim=num_of_patterns, hidden_dim=512, output_dim=10000):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.BatchNorm1d(hidden_dim),
+            nn.Linear(hidden_dim, output_dim)
+        )
+    def forward(self, x):
+        return self.net(x)
+```
+Recommended trainning setup:
+
+- Loss: masked BCEWithLogitsLoss (ignore entries where label is 2) 
+- Optimizer: Adam (lr = 1e-3, weight_decay = 1e-5) 
+- Scheduler: ReduceLROnPlateau 
+- Model selection: run 3 epoches and save checkpoint with best validation   
+
+### 7.3 Evaluate
+
+After training:  
+1. Run inference on the test set.  
+2. Apply sigmoid to logits to obtain probabilities.  
+3. Compute metrics on valid positions only (Accuracy, MAE, AUPRC).  
+4. Save predicted probabilities to predictions.csv for downstream R visualization.
+
+Notes  
+- For whole-genome analysis, perform block-wise upscaling in parallel to improve computational efficiency.
+
 ## Related resources
 
 - MRMP reference tutorial: <https://zhou-lab.github.io/MethScope/articles/MethScope-MRMP.html>
