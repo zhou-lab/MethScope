@@ -92,15 +92,11 @@ Then invoke the skill when working on MethScope package usage, vignettes, `.cg` 
 
 ### Claude
 
-Use `agent-skills/methscope/claude/CLAUDE.md` as project context, or merge it into your repository-level `CLAUDE.md`.
+If you already keep a repository-level `CLAUDE.md`, copy the contents of `agent-skills/methscope/claude/CLAUDE.md` into it or reference that file from your existing Claude project instructions.
 
-Keep the shared `agent-skills/methscope/core/` directory available alongside it so the referenced instruction files remain valid.
+If you do not already have a project `CLAUDE.md`, use `agent-skills/methscope/claude/CLAUDE.md` as the starting project context for this repository.
 
-Use the Claude context for the same MethScope-specific tasks:
-- package usage
-- documentation editing
-- workflow debugging
-- package development
+Keep `agent-skills/methscope/core/` in the repository, because the Claude instructions point to those shared files.
 
 ### Shared files
 
