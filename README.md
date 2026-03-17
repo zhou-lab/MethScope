@@ -70,6 +70,44 @@ PlotUMAP(input_pattern, pred)
 - End-to-end tutorial: [MethScope-Tutorial](https://zhou-lab.github.io/MethScope/articles/MethScope-Tutorial.html)
 - Building MRMP references: [MethScope-MRMP](https://zhou-lab.github.io/MethScope/articles/MethScope-MRMP.html)
 
+## Agent skill
+
+This repository includes a reusable MethScope agent skill under `agent-skills/methscope/`.
+
+### Codex
+
+Install the skill under `$CODEX_HOME/skills/methscope/` with this layout:
+
+```text
+$CODEX_HOME/skills/methscope/
+  SKILL.md        <- copy from agent-skills/methscope/codex/SKILL.md
+  core/
+```
+
+Copy:
+- `agent-skills/methscope/codex/SKILL.md` to `$CODEX_HOME/skills/methscope/SKILL.md`
+- `agent-skills/methscope/core/` to `$CODEX_HOME/skills/methscope/core/`
+
+Then invoke the skill when working on MethScope package usage, vignettes, `.cg` and `.cm` inputs, MRMP embeddings, prediction, training, deconvolution, or visualization.
+
+### Claude
+
+Use `agent-skills/methscope/claude/CLAUDE.md` as project context, or merge it into your repository-level `CLAUDE.md`.
+
+Keep the shared `agent-skills/methscope/core/` directory available alongside it so the referenced instruction files remain valid.
+
+Use the Claude context for the same MethScope-specific tasks:
+- package usage
+- documentation editing
+- workflow debugging
+- package development
+
+### Shared files
+
+- `agent-skills/methscope/core/INSTRUCTIONS.md`
+- `agent-skills/methscope/core/WORKFLOWS.md`
+- `agent-skills/methscope/core/REFERENCES.md`
+
 ## Data resources
 
 - Example and reference data: [zhou-lab/methscope_data](https://github.com/zhou-lab/methscope_data)

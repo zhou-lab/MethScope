@@ -125,6 +125,37 @@
 </ul>
 </div>
 <div class="section level2">
+<h2 id="agent-skill">Agent skill<a class="anchor" aria-label="anchor" href="#agent-skill"></a>
+</h2>
+<p>This repository includes a reusable MethScope agent skill under <code>agent-skills/methscope/</code>.</p>
+<div class="section level3">
+<h3 id="codex">Codex<a class="anchor" aria-label="anchor" href="#codex"></a>
+</h3>
+<p>Install the skill under <code>$CODEX_HOME/skills/methscope/</code> with this layout:</p>
+<pre class="text"><code>$CODEX_HOME/skills/methscope/
+  SKILL.md        &lt;- copy from agent-skills/methscope/codex/SKILL.md
+  core/</code></pre>
+<p>Copy: - <code>agent-skills/methscope/codex/SKILL.md</code> to <code>$CODEX_HOME/skills/methscope/SKILL.md</code> - <code>agent-skills/methscope/core/</code> to <code>$CODEX_HOME/skills/methscope/core/</code></p>
+<p>Then invoke the skill when working on MethScope package usage, vignettes, <code>.cg</code> and <code>.cm</code> inputs, MRMP embeddings, prediction, training, deconvolution, or visualization.</p>
+</div>
+<div class="section level3">
+<h3 id="claude">Claude<a class="anchor" aria-label="anchor" href="#claude"></a>
+</h3>
+<p>Use <code>agent-skills/methscope/claude/CLAUDE.md</code> as project context, or merge it into your repository-level <code>CLAUDE.md</code>.</p>
+<p>Keep the shared <code>agent-skills/methscope/core/</code> directory available alongside it so the referenced instruction files remain valid.</p>
+<p>Use the Claude context for the same MethScope-specific tasks: - package usage - documentation editing - workflow debugging - package development</p>
+</div>
+<div class="section level3">
+<h3 id="shared-files">Shared files<a class="anchor" aria-label="anchor" href="#shared-files"></a>
+</h3>
+<ul>
+<li><code>agent-skills/methscope/core/INSTRUCTIONS.md</code></li>
+<li><code>agent-skills/methscope/core/WORKFLOWS.md</code></li>
+<li><code>agent-skills/methscope/core/REFERENCES.md</code></li>
+</ul>
+</div>
+</div>
+<div class="section level2">
 <h2 id="data-resources">Data resources<a class="anchor" aria-label="anchor" href="#data-resources"></a>
 </h2>
 <ul>
