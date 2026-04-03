@@ -22,6 +22,14 @@ devtools::install_github("zhou-lab/MethScope")
 
 [Explore the MethScope Website](https://zhou-lab.github.io/MethScope/)
 
+## License
+
+This project is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE.md).
+
+Copyright (c) 2025 Hongxiang Fu and Wanding Zhou (zhouw3@chop.edu)
+
+For commercial use or if the AGPL-3.0 restrictions are not suitable for your use case, please contact us for a commercial license: zhouw3@chop.edu
+
 ## Citation
 
 If you use MethScope, kindly cite (coming soon):
