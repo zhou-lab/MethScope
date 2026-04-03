@@ -3,4 +3,4 @@ template:
   bootstrap: 5
   params:
     bootswatch: flatly
-    logo: man/figures/logo.png
+    logo: man/figures/logo.svg
