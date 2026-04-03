@@ -79,46 +79,73 @@
     
     
 <div class="section level2">
-<h2 id="generate-mrmp-reference">Generate MRMP reference<a class="anchor" aria-label="anchor" href="#generate-mrmp-reference"></a>
+<h2 id="generate-an-mrmp-reference">Generate an MRMP reference<a class="anchor" aria-label="anchor" href="#generate-an-mrmp-reference"></a>
 </h2>
-<p>We provided three reference MRMPs definitions, and if you want to
-create your own MRMPs definitions, please follow the following
-tutorial.</p>
+<p>MethScope includes pre-defined MRMP references, and you can also
+build your own from a methylation atlas.</p>
+<div class="section level3">
+<h3 id="prerequisites">Prerequisites<a class="anchor" aria-label="anchor" href="#prerequisites"></a>
+</h3>
 <ol style="list-style-type: decimal">
-<li>Download and install <strong>YAME</strong> (<a href="https://zhou-lab.github.io/YAME/" class="external-link uri">https://zhou-lab.github.io/YAME/</a>)</li>
-<li>Process you methylation reference file into .cg file</li>
-<li>run the following yame rowop code to binarize your input file
-(default threshold is at 0.5, use -b to adjust threshold if needed)</li>
+<li>Install <strong>YAME</strong> for <code>.cg</code> processing: <a href="https://zhou-lab.github.io/YAME/" class="external-link uri">https://zhou-lab.github.io/YAME/</a>
+</li>
+<li>Prepare a reference methylation <code>.cg</code> file (for example,
+an atlas or merged reference panel)</li>
+<li>Install and load <code>MethScope</code>
+</li>
 </ol>
-<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="ex">yame</span> rowop example.cg <span class="at">-o</span> binstring <span class="op">&gt;</span> example_binstring</span></code></pre></div>
-<ol start="4" style="list-style-type: decimal">
-<li>Generate the reference definition (default min CG per MRMP is 50,
-adjust the threshold if needed with min_CG)</li>
-</ol>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateReference.html">GenerateReference</a></span><span class="op">(</span><span class="va">example_binstring</span><span class="op">)</span></span></code></pre></div>
-<ol start="5" style="list-style-type: decimal">
-<li>Pack the generated pattern.txt into .cm file which can be directly
-used as reference_pattern in our GenerateInput function.</li>
-</ol>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="ex">yame</span> pack <span class="at">-f</span> s patterns.txt patterns.cm</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">MethScope</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="step-1-binarize-the-reference--cg-file">Step 1: Binarize the reference <code>.cg</code> file<a class="anchor" aria-label="anchor" href="#step-1-binarize-the-reference--cg-file"></a>
+</h3>
+<p>Convert methylation proportions into binary strings. The default
+threshold is 0.5; adjust with <code>-b</code> if needed.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">yame</span> rowop example.cg <span class="at">-o</span> binstring <span class="op">&gt;</span> example_binstring</span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="step-2-build-mrmp-pattern-definitions">Step 2: Build MRMP pattern definitions<a class="anchor" aria-label="anchor" href="#step-2-build-mrmp-pattern-definitions"></a>
+</h3>
+<p>Use <code><a href="../reference/GenerateReference.html">GenerateReference()</a></code> to identify recurrent
+patterns.<br><code>min_CG</code> controls the minimum CpGs per MRMP (default:
+<code>50</code>).</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateReference.html">GenerateReference</a></span><span class="op">(</span>binary_file <span class="op">=</span> <span class="st">"example_binstring"</span>, min_CG <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></code></pre></div>
+<p>This step generates a <code>patterns.txt</code> file.</p>
+</div>
+<div class="section level3">
+<h3 id="step-3-pack-patterns-into-a--cm-reference">Step 3: Pack patterns into a <code>.cm</code> reference<a class="anchor" aria-label="anchor" href="#step-3-pack-patterns-into-a--cm-reference"></a>
+</h3>
+<p>Pack <code>patterns.txt</code> into a <code>.cm</code> file that can
+be passed as <code>reference_pattern</code> in
+<code><a href="../reference/GenerateInput.html">GenerateInput()</a></code>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">yame</span> pack <span class="at">-f</span> s patterns.txt patterns.cm</span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
-<h2 id="generate-mrmps-reference-from-cell-type-pseudobulks">Generate MRMPs reference from cell type pseudobulks<a class="anchor" aria-label="anchor" href="#generate-mrmps-reference-from-cell-type-pseudobulks"></a>
+<h2 id="build-mrmp-references-from-cell-type-pseudobulks">Build MRMP references from cell-type pseudobulks<a class="anchor" aria-label="anchor" href="#build-mrmp-references-from-cell-type-pseudobulks"></a>
 </h2>
-<p>It might be useful to generate the MRMPs reference from cell type
-pseudobulks if the cell type label is available.</p>
-<ol style="list-style-type: decimal">
-<li>Obtain a txt file that contains sample names belong to oen cell type
-that you want to merge together from the cell type label.</li>
-<li>Generate the pseudobulk profile using yame subset and rowop</li>
-</ol>
-<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">yame</span> subset <span class="at">-l</span> samples.txt example.cg <span class="kw">|</span> <span class="ex">yame</span> rowop <span class="at">-o</span> musum <span class="at">-</span> example_pseudobulk.cg</span></code></pre></div>
-<p>Please check our full code GenerateReference.sh in our analysis
-folder (<a href="https://github.com/zhou-lab/MethScope" class="external-link uri">https://github.com/zhou-lab/MethScope</a>) as a reference
-for in parallel process multiple cell types. After obtaining the
-pseudobulk profile, it will be the same steps as above to obtain the
-MRMPs definition file.</p>
+<p>If cell-type labels are available, pseudobulked profiles can produce
+robust cell-type-informed MRMP references.</p>
+<div class="section level3">
+<h3 id="step-1-create-pseudobulk-profiles-per-cell-type">Step 1: Create pseudobulk profiles per cell type<a class="anchor" aria-label="anchor" href="#step-1-create-pseudobulk-profiles-per-cell-type"></a>
+</h3>
+<p>Prepare a text file (<code>samples.txt</code>) containing sample IDs
+for one cell type, then aggregate with <code>musum</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">yame</span> subset <span class="at">-l</span> samples.txt example.cg <span class="kw">|</span> <span class="ex">yame</span> rowop <span class="at">-o</span> musum <span class="at">-</span> example_pseudobulk.cg</span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="step-2-repeat-per-cell-type-and-build-mrmps">Step 2: Repeat per cell type and build MRMPs<a class="anchor" aria-label="anchor" href="#step-2-repeat-per-cell-type-and-build-mrmps"></a>
+</h3>
+<p>Run the same workflow above
+(<code>binstring -&gt; GenerateReference -&gt; yame pack</code>) on each
+pseudobulk or combined pseudobulk panel.</p>
+<p>For running a full parallelized multi-cell-type script, please refer
+to: <a href="https://github.com/zhou-lab/MethScope/blob/main/analysis/GenerateReference.sh" class="external-link uri">https://github.com/zhou-lab/MethScope/blob/main/analysis/GenerateReference.sh</a></p>
+<p>After generating <code>patterns.cm</code>, use it as the custom MRMP
+reference in downstream MethScope analyses.</p>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
