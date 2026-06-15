@@ -1,8 +1,8 @@
 ---
-title: "Converting methylation files to .cg"
+title: "MethScope-Input"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Converting methylation files to .cg}
+  %\VignetteIndexEntry{MethScope-Input}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,7 +21,7 @@ binary representation of methylation data in a fixed CpG order. Before running
 `GenerateInput()`, the query `.cg` file and the MRMP reference `.cm` file must be
 based on the same genome build and CpG coordinate order.
 
-This tutorial shows common conversion patterns for:
+This tutorial shows common input-preparation patterns for:
 
 - BED-like methylation files
 - ALLC files
