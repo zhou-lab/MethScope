@@ -690,7 +690,7 @@ dev.off()
 rm -f ~/tmp/20231122_downsample/bycell/*
 doawk() { awk -v number=$1 -v seed=$2 -v gsm=$3 'NR>1 && int(substr($4,2)) <= 2000{print number, seed, gsm, $4,$10;}' $4;}
 export -f doawk
-cat ~/cell_type/20240322_Liu2021_testing_sample.txt | awk '{for(i=10;i<=19;++i) {print 2**i,$1;}}' | parallel --col-sep '\t' -j 48 ':>~/tmp/20231122_downsample/bycell/{1}_{2}.gz; for seed in {1..1}; do yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg {2} | yame dsample -s $seed -N {1} - | yame summary -m ~/cell_type/Tool/MethScope/inst/extdata/Liu2021_MouseBrain.cm - | doawk {1} $seed {2} - | gzip -c >>~/tmp/20231122_downsample/bycell/{1}_{2}.gz; done'
+cat ~/cell_type/20240322_Liu2021_testing_sample.txt | awk '{for(i=10;i<=19;++i) {print 2**i,$1;}}' | parallel --col-sep '\t' -j 48 ':>~/tmp/20231122_downsample/bycell/{1}_{2}.gz; for seed in {1..1}; do yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg {2} | yame dsample -s $seed -N {1} - | yame summary -m ~/cell_type/Tool/MethScope/inst/extdata/mm10_Liu2021.cm - | doawk {1} $seed {2} - | gzip -c >>~/tmp/20231122_downsample/bycell/{1}_{2}.gz; done'
 find ~/tmp/20231122_downsample/bycell/ -name '*.gz' | xargs cat >~/tmp/20231122_downsample/dsample.tsv.gz
 
 yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20240322_Liu2021_training_sample.txt -o ~/intermediate/20240322_Liu2021_training.cg
@@ -709,7 +709,7 @@ test = test |> dplyr::filter(pattern %in% paste0("P", 1:2000)) |>
 meta <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
 
 patterns_to_test <- c(125,250,500,1000,2000)
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/intermediate/20240322_Liu2021_training.cg",reference_pattern)
 sampled_celltype <- meta$MajorType[match(rownames(input_pattern), meta$SampleID)]
 trained_model <- Input_training(input_pattern,sampled_celltype,number_patterns = 2000,cross_validation = F)
@@ -760,7 +760,7 @@ dev.off()
 ```{r}
 ### human 
 cpg_anno <- read.table("/mnt/isilon/zhou_lab/projects/20191221_references/hg38/annotation/cpg/cpg_nocontig.bed.gz")
-Pattern_annotation <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Zhou2025_HumanAtlas.cm", intern=TRUE), header=F)
+Pattern_annotation <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/hg38_Zhou2025.cm", intern=TRUE), header=F)
 
 df <- Pattern_annotation
 df_clean <- df[df$V1 != "Pna", , drop = FALSE]
@@ -770,7 +770,7 @@ prop <- mean(matches)
 
 ### mouse
 cpg_anno <- read.table("/mnt/isilon/zhou_lab/projects/20191221_references/mm10/annotation/cpg/cpg_nocontig.bed.gz")
-Pattern_annotation <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Liu2021_MouseBrain.cm", intern=TRUE), header=F)
+Pattern_annotation <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/mm10_Liu2021.cm", intern=TRUE), header=F)
   
 idx <- grep("^P[0-9]+$", Pattern_annotation[,1])
 #idx <- idx[as.numeric(sub("P", "", Pattern_annotation[idx,1])) <= 1000]
@@ -845,7 +845,7 @@ ggsave("~/figures/fuh1/20250815_wuhao_distance.pdf",width=3,height=3)
 ### Check for graph clustering
 
 ```{r}
-reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
 
 library(igraph)
@@ -902,8 +902,8 @@ plot(g_thr,
 
 ```{r}
 library(data.table)
-A <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Zhou2025_HumanAtlas.cm", intern=TRUE), header=F)
-B <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Loyfer2023_HumanAtlas.cm", intern=TRUE), header=F)
+A <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/hg38_Zhou2025.cm", intern=TRUE), header=F)
+B <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/hg38_Loyfer2023.cm", intern=TRUE), header=F)
 DT <- data.table(A=A, B=B)
 setnames(DT, c("A.V1","B.V1"), c("A","B"))
 DT_filtered <- DT[A != "Pna" & B != "Pna"]

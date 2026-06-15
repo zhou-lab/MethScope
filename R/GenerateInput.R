@@ -55,5 +55,5 @@ GenerateReference <- function(binary_file,min_CG = 50,output_path="./patterns.tx
   if(length(which(sortedFrequency$Freq <= min_CG)) > 0){
     sortedFrequency[which(sortedFrequency$Freq <= min_CG),]$pattern <- "Pna"}
   patterns_out <- sortedFrequency$pattern[match(reference_set, sortedFrequency$reference_set)]
-  write.table(patterns_out,output_path,quote=FALSE,col.names = FALSE,row.names = FALSE)
+  utils::write.table(patterns_out,output_path,quote=FALSE,col.names = FALSE,row.names = FALSE)
 }

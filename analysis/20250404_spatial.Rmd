@@ -7,7 +7,7 @@ date: "2025-04-04"
 ```{r}
 library(Seurat)
 library(ArchR)
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLE14DM/SpMETSLE14DM.cg",reference_pattern)
 #input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLB14DM/SpMETSLB14DM.cg",reference_pattern)
 valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20240331_E14D_barcodesK.rds")
@@ -468,7 +468,7 @@ ggsave("~/figures/fuh1/20250724_HLN4_VMR.pdf",width=4.5,height=4)
 ```{r}
 library(Seurat)
 library(ArchR)
-reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
 #input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLHLN4D/SpMETSLHLN4D.cg",reference_pattern)
 valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20251020_HLN4D_barcodesK.rds")
 
@@ -678,7 +678,7 @@ ggsave(paste0("~/figures/fuh1/20250820_HLN4_",cell_type,"_uxm.pdf"),width=4.5,he
 ```{r}
 library(Seurat)
 library(ArchR)
-reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230531_Spatial_methseq/pileup/SpMETSLHSK08DD/SpMETSLHSK08DD.cg",reference_pattern)
 #valid_barcodes <- readRDS("/home/fuh1/zhoulab/labprojects/20231112_Hongxiang/20250430_HLN4D_barcodesK.rds")
 

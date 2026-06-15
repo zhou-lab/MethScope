@@ -24,7 +24,7 @@ Input_training(
 \item{xgb_parameters}{an optional list for xgb model parameters provided by the user}
 }
 \value{
-the xgb model trained
+A MethScopeModel object containing the trained XGBoost booster and metadata.
 }
 \description{
 Train XGBoost model to predict cell type

@@ -5,7 +5,7 @@
 #' @param number_patterns a numeric value to indicate number of patterns to be used (Default: 1000)
 #' @param cross_validation a boolean varaible whether to perform cross_validation to obtain the best hyper parameters for the model
 #' @param xgb_parameters an optional list for xgb model parameters provided by the user
-#' @return the xgb model trained
+#' @return A MethScopeModel object containing the trained XGBoost booster and metadata.
 #' @import xgboost
 #' @import caret
 #' @import doParallel
@@ -65,12 +65,22 @@ Input_training <- function(summary_results,cell_type_label,number_patterns=1000,
   }
 
   dtrain <- xgb.DMatrix(data = train, label= cell_type_label)
-  bst_model <- xgb.train(params = xgb_params,
-                         data = dtrain,
-                         nrounds = round(sqrt(nrow(train))),
-                         watchlist = list(train = dtrain),
-                         print_every_n = 20)
-  bst_model$cell_type <- levels(cell_type_label_factor)
-  bst_model$npattern <- number_patterns
-  return(bst_model)
+  train_args <- list(
+    params = xgb_params,
+    data = dtrain,
+    nrounds = round(sqrt(nrow(train))),
+    print_every_n = 20
+  )
+  eval_arg <- if ("evals" %in% names(formals(xgboost::xgb.train))) "evals" else "watchlist"
+  train_args[[eval_arg]] <- list(train = dtrain)
+  bst_model <- do.call(xgboost::xgb.train, train_args)
+  structure(
+    list(
+      booster = bst_model,
+      cell_type = levels(cell_type_label_factor),
+      npattern = number_patterns,
+      num_class = numberOfClasses
+    ),
+    class = "MethScopeModel"
+  )
 }

@@ -40,12 +40,26 @@ Data and preprocessing resources:
 
 Use `GenerateInput()` to transform a query `.cg` file into a sample-by-MRMP matrix.
 
+The GitHub repository includes a full example query file for testing MethScope.
+After cloning <https://github.com/zhou-lab/MethScope>, run from the repository
+root:
+
+CRAN packages have size limits, so the CRAN release contains only tiny toy files.
+Use the GitHub example data below for functional testing and cell-type
+prediction.
+
+GitHub reference `.cm` files are named by genome build and source dataset:
+`mm10_Liu2021.cm`, `hg38_Zhou2025.cm`, and `hg38_Loyfer2023.cm`.
+
 ```{r, eval=FALSE}
-# Paths to your .cg and .cm files
-example_file <- "/home/fuh1/cell_type/Tool/MethScope/inst/extdata/example.cg"
-reference_pattern <- "/home/fuh1/cell_type/Tool/MethScope/inst/extdata/Liu2021_MouseBrain.cm"
+# Paths to the GitHub example .cg file and mouse brain .cm reference
+example_file <- "inst/extdata/example.cg"
+reference_pattern <- "inst/extdata/mm10_Liu2021.cm"
 input_pattern <- GenerateInput(example_file, reference_pattern)
 ```
+
+The full `mm10_Liu2021.cm` reference contains more than 1000 MRMPs; the built-in
+mouse brain model uses the first 1000 patterns.
 
 Example output (`head(input_pattern[, 1:9])`):
 
@@ -59,21 +73,19 @@ Example output (`head(input_pattern[, 1:9])`):
 | GSM4016157 | 0.929 | 0.016 | 0.887 | 0.881 | 0.859 | 0.880 | 0.904 | 0.882 | 0.825 |
 
 For really large datasets, please consider split `.cg` files and process in parallel:
-<https://zhou-lab.github.io/YAME/docs/subcommands/YAME_subset.html>
+<https://zhou-lab.github.io/YAME/>
 
 ## 2) Perform cell-type annotation
 
 Use a built-in pre-trained model for fast annotation.
 Available built-in examples include:
 
-- `MethScope:::Liu2021_MouseBrain_P1000`
-- `MethScope:::Zhou2025_HumanAtlas_P1000`
+- `Liu2021_MouseBrain_P1000()`
+- `Zhou2025_HumanAtlas_P1000()`
 
 ```{r, eval=FALSE}
-prediction_result <- PredictCellType(
-  MethScope:::Liu2021_MouseBrain_P1000,
-  input_pattern
-)
+model <- Liu2021_MouseBrain_P1000()
+prediction_result <- PredictCellType(model, input_pattern)
 ```
 
 ## 3) Train a custom classification model
@@ -120,8 +132,8 @@ Some reference matrix examples are available in:
 <https://github.com/zhou-lab/methscope_data>
 
 ```{r, eval=FALSE}
-reference_pattern <- "Liu2021_MouseBrain.cm"
-reference_input <- readRDS("2021Liu_reference_pattern.rds")
+reference_pattern <- "mm10_Liu2021.cm"
+reference_input <- readRDS("mm10_Liu2021_ref.rds")
 cell_proportion <- nnls_deconv(reference_input, input_pattern)
 ```
 

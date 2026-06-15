@@ -1,11 +1,23 @@
 Package: MethScope
-Title: Ultra-Fast Analysis of Sparse DNA Methylome via Recurrent Pattern Encoding
-Version: 1.0.0
+Title: Ultra-Fast Analysis of Sparse DNA Methylome via Recurrent
+        Pattern Encoding
+Version: 1.0.2
 Authors@R: c(
     person("Hongxiang", "Fu", , "fhx@seas.upenn.edu", role = c("aut", "cre"),comment = c(ORCID = "0000-0002-9873-8606")),
-    person("Wanding", "Zhou", , "wanding.zhou@pennmedicine.upenn.edu", role = c("cph", "fnd"))
+    person("Wanding", "Zhou", , "wanding.zhou@pennmedicine.upenn.edu", role = c("cph", "fnd")),
+    person("The SAMtools/HTSlib authors", role = c("ctb","cph"),
+         comment = "BGZF components; see inst/COPYRIGHTS"),
+    person(given = "Attractive", family = "Chaos",
+         role = c("ctb","cph"),
+         comment = "Author and copyright holder of khash.h (klib, MIT license)")
     )
-Description: Identifies Most Recurrent Methylation Patterns (MRMPs).
+Description: Methods for analyzing DNA methylation data via Most Recurrent
+    Methylation Patterns (MRMPs). Supports cell-type annotation, spatial
+    deconvolution, unsupervised clustering, and cancer cell-of-origin inference.
+    Includes C-backed summaries for YAME ".cg/.cm" files (overlap counts, log2
+    odds ratios, beta/depth aggregation), an XGBoost classifier, NNLS
+    deconvolution, and plotting utilities. Scales to large spatial and
+    single-cell methylomes and is robust to extreme sparsity.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -27,7 +39,12 @@ Imports:
   nnls
 Suggests: 
     knitr,
-    rmarkdown
+    rmarkdown,
+    spelling,
+    testthat
 VignetteBuilder: knitr
 Depends: 
-    R (>= 2.10)
+    R (>= 4.0)
+SystemRequirements: zlib
+NeedsCompilation: yes
+Language: en-US

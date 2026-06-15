@@ -7,12 +7,37 @@
 #' @return A cell by cell type matrix with confidence score and labeled cell type.
 #' @import xgboost
 #' @importFrom stats setNames
+#' @importFrom stats predict
 #' @importFrom dplyr mutate
 #' @export
+#' @examples
+#' \dontrun{
+#' # Run from the root of a cloned zhou-lab/MethScope repository.
+#' input_pattern <- GenerateInput("inst/extdata/example.cg",
+#'                                "inst/extdata/mm10_Liu2021.cm")
+#' model <- Liu2021_MouseBrain_P1000()
+#' prediction <- PredictCellType(model, input_pattern)
+#' }
+#' 
 PredictCellType <- function(bst_model, predictMatrix,smooth=FALSE,KNeighbor=5) {
-  numberOfClasses <- bst_model$params$num_class
-  cell_type_factor <- bst_model$cell_type
-  number_patterns <- bst_model$npattern
+  if (inherits(bst_model, "MethScopeModel")) {
+    booster <- bst_model$booster
+    numberOfClasses <- bst_model$num_class
+    cell_type_factor <- bst_model$cell_type
+    number_patterns <- bst_model$npattern
+  } else {
+    booster <- bst_model
+    numberOfClasses <- bst_model$params$num_class
+    cell_type_factor <- bst_model$cell_type
+    number_patterns <- bst_model$npattern
+  }
+  if (is.null(numberOfClasses) || is.null(cell_type_factor) || is.null(number_patterns)) {
+    stop("bst_model must include num_class, cell_type, and npattern metadata.", call. = FALSE)
+  }
+  if (ncol(predictMatrix) < number_patterns) {
+    stop("predictMatrix has ", ncol(predictMatrix), " columns, but the model expects ",
+         number_patterns, " patterns.", call. = FALSE)
+  }
   sample_names <- rownames(predictMatrix)
   predictMatrix = do.call(cbind, lapply(predictMatrix[,1:number_patterns], as.numeric))
   if (smooth){
@@ -25,11 +50,15 @@ PredictCellType <- function(bst_model, predictMatrix,smooth=FALSE,KNeighbor=5) {
     predictMatrix <- as.matrix(predictMatrix_smooth)
   }
   dtest <- xgboost::xgb.DMatrix(data = predictMatrix)
-  pred_result <- predict(bst_model, newdata = dtest)
-  pred_result <- matrix(pred_result, nrow = numberOfClasses,
-                            ncol=length(pred_result)/numberOfClasses) %>%
-                     t() %>% data.frame() %>%
-                     dplyr::mutate(max_prob = max.col(., "last"))
+  pred_result <- stats::predict(booster, newdata = dtest)
+  if (is.matrix(pred_result)) {
+    pred_result <- data.frame(pred_result)
+  } else {
+    pred_result <- matrix(pred_result, nrow = numberOfClasses,
+                              ncol=length(pred_result)/numberOfClasses) %>%
+                       t() %>% data.frame()
+  }
+  pred_result <- pred_result %>% dplyr::mutate(max_prob = max.col(., "last"))
   num_to_factor <- stats::setNames(cell_type_factor, 1:length(cell_type_factor))
   pred_result$prediction_label <- factor(sapply(pred_result$max_prob, function(x) num_to_factor[as.character(x)]), levels = cell_type_factor)
   confiscore <- apply(pred_result[,1:numberOfClasses], 1, confidence_score)
@@ -137,7 +166,7 @@ nnls_deconv <- function(ref, mixture_matrix,number_patterns= 1000,var_threshold=
   ref <- ref[common_rows, , drop = FALSE]
   mixture_matrix <- mixture_matrix[common_rows, , drop = FALSE]
   mixture_matrix <- as.matrix(mixture_matrix[rownames(ref),])
-  row_vars_ref <- apply(ref, 1, var)
+  row_vars_ref <- apply(ref, 1, stats::var)
   high_var_rows <- names(row_vars_ref[row_vars_ref > var_threshold])
   ref <- ref[high_var_rows, , drop = FALSE]
   mixture_matrix <- mixture_matrix[high_var_rows, , drop = FALSE]

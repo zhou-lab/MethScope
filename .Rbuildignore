@@ -2,8 +2,13 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^analysis/
-^doc$
 ^Meta$
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^inst/extdata/example\.cg$
+^inst/extdata/example\.cg\.idx$
+^inst/extdata/mm10_Liu2021\.cm$
+^inst/extdata/hg38_Loyfer2023\.cm$
+^inst/extdata/hg38_Zhou2025\.cm$
+^inst/extdata/Win100k\.mouse\.cm$

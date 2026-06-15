@@ -21,3 +21,12 @@ A cell by cell type matrix with confidence score and labeled cell type.
 \description{
 Predict cell type annotation from the trained model
 }
+\examples{
+\dontrun{
+# Run from the root of a cloned zhou-lab/MethScope repository.
+input_pattern <- GenerateInput("inst/extdata/example.cg",
+                               "inst/extdata/mm10_Liu2021.cm")
+model <- Liu2021_MouseBrain_P1000()
+prediction <- PredictCellType(model, input_pattern)
+}
+}
