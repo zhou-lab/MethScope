@@ -2,7 +2,8 @@ pandoc: '3.10'
 pkgdown: 2.0.9
 pkgdown_sha: ~
 articles:
+  MethScope-Data-Conversion: MethScope-Data-Conversion.html
   MethScope-MRMP: MethScope-MRMP.html
   MethScope-Tutorial: MethScope-Tutorial.html
-last_built: 2026-06-15T18:54Z
+last_built: 2026-06-15T19:50Z
 

@@ -1,0 +1,235 @@
+---
+title: "Converting methylation files to .cg"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Converting methylation files to .cg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+MethScope uses YAME `.cg` files as methylation input. A `.cg` file is a compact
+binary representation of methylation data in a fixed CpG order. Before running
+`GenerateInput()`, the query `.cg` file and the MRMP reference `.cm` file must be
+based on the same genome build and CpG coordinate order.
+
+This tutorial shows common conversion patterns for:
+
+- BED-like methylation files
+- ALLC files
+- beta or methylation fraction tables
+- binary presence/absence tracks
+
+For complete YAME command documentation, see <https://zhou-lab.github.io/YAME/>.
+YAME's storage guide describes the supported CX formats and the requirement that
+input rows match the reference CpG coordinates exactly:
+<https://zhou-lab.github.io/YAME/docs/storage.html>.
+
+For ALLC files, this tutorial follows the ALLCools definition:
+<https://lhqing.github.io/ALLCools/start/input_files.html>.
+
+## Install command-line dependencies
+
+Install YAME and bedtools before converting files.
+
+```{bash, eval=FALSE}
+conda install -c bioconda yame bedtools
+```
+
+## Choose the correct CpG reference
+
+Use the CpG reference that matches the genome build of your data and the MethScope
+MRMP reference. For example, use an `mm10` CpG reference with
+`mm10_Liu2021.cm`, and use an `hg38` CpG reference with `hg38_Zhou2025.cm` or
+`hg38_Loyfer2023.cm`.
+
+The examples below assume that you have a YAME CpG reference file called
+`cpg_reference.cr`. Convert it to BED once:
+
+```{bash, eval=FALSE}
+yame unpack cpg_reference.cr | gzip > cpg_reference.bed.gz
+```
+
+The BED file created from the `.cr` reference defines the required row order for
+the output `.cg` file.
+
+## Convert M/U count BED files
+
+Use YAME format 3 (`-f3`) when the input has methylated and unmethylated read
+counts. This is the recommended format for bisulfite sequencing data when read
+depth is available.
+
+Expected input:
+
+```text
+chr1    3000826    3000827    4    6
+chr1    3001006    3001007    0    8
+```
+
+where columns are:
+
+```text
+chrom    start    end    M    U
+```
+
+Align the file to the reference CpG coordinates and pack:
+
+```{bash, eval=FALSE}
+bedtools sort -i sample_mu.bed > sample_mu.sorted.bed
+
+bedtools intersect \
+  -a cpg_reference.bed.gz \
+  -b sample_mu.sorted.bed \
+  -loj \
+  -sorted | \
+awk 'BEGIN{OFS="\t"} {if ($8==".") print 0,0; else print $8,$9}' | \
+yame pack -f3 - > sample.cg
+```
+
+Check the result:
+
+```{bash, eval=FALSE}
+yame info sample.cg
+yame summary sample.cg
+```
+
+## Convert ALLC files
+
+ALLC files are tab-separated base-resolution cytosine count tables. In the
+ALLCools convention, each row has 7 mandatory columns and no header:
+
+```text
+chromosome    position    strand    sequence_context    mc    cov    methylated
+```
+
+where `position` is 1-based, `mc` is the count of reads supporting methylation,
+and `cov` is total read coverage. For MethScope, convert CG-context rows to
+YAME format 3 by setting:
+
+```text
+M = mc
+U = cov - mc
+```
+
+The command below keeps rows whose sequence context begins with `CG`, converts
+the 1-based ALLC position to a 0-based BED interval, derives `U`, aligns the
+result to the CpG reference, and packs the final two-column `M U` stream.
+
+```{bash, eval=FALSE}
+zcat sample.allc.tsv.gz | \
+awk 'BEGIN{OFS="\t"}
+     $4 ~ /^CG/ {
+       chrom = $1
+       start = $2 - 1
+       end = $2
+       m = $5
+       u = $6 - $5
+       if (u < 0) u = 0
+       print chrom, start, end, m, u
+     }' | \
+bedtools sort -i - > sample_mu.sorted.bed
+
+bedtools intersect \
+  -a cpg_reference.bed.gz \
+  -b sample_mu.sorted.bed \
+  -loj \
+  -sorted | \
+awk 'BEGIN{OFS="\t"} {if ($8==".") print 0,0; else print $8,$9}' | \
+yame pack -f3 - > sample.cg
+```
+
+If your ALLC file is not compressed, replace `zcat sample.allc.tsv.gz` with
+`cat sample.allc.tsv`.
+
+## Convert beta or methylation fraction files
+
+Use YAME format 4 (`-f4`) when the input already contains methylation fractions
+or beta values. Missing CpGs should be encoded as `NA`.
+
+Expected input:
+
+```text
+chr1    3000826    3000827    0.42
+chr1    3001006    3001007    0.81
+```
+
+Convert to `.cg`:
+
+```{bash, eval=FALSE}
+bedtools sort -i sample_beta.bed > sample_beta.sorted.bed
+
+bedtools intersect \
+  -a cpg_reference.bed.gz \
+  -b sample_beta.sorted.bed \
+  -loj \
+  -sorted | \
+awk 'BEGIN{OFS="\t"} {if ($8==".") print "NA"; else print $8}' | \
+yame pack -f4 - > sample_beta.cg
+```
+
+Format 4 stores methylation fractions but does not retain read depth.
+
+## Convert binary BED tracks
+
+Use YAME format 0 (`-fb`) when each CpG is represented as present or absent.
+This is useful for binary tracks, peak overlaps, or binarized methylation states.
+
+```{bash, eval=FALSE}
+bedtools sort -i binary_track.bed > binary_track.sorted.bed
+
+bedtools intersect \
+  -a cpg_reference.bed.gz \
+  -b binary_track.sorted.bed \
+  -sorted \
+  -c | \
+cut -f4 | \
+awk '{if ($1 > 0) print 1; else print 0}' | \
+yame pack -fb - > binary_track.cg
+```
+
+## Use the converted file in MethScope
+
+After creating `sample.cg`, use an MRMP reference `.cm` from the same genome
+build.
+
+```{r, eval=FALSE}
+library(MethScope)
+
+query_file <- "sample.cg"
+reference_pattern <- "mm10_Liu2021.cm"
+
+input_pattern <- GenerateInput(query_file, reference_pattern)
+
+model <- Liu2021_MouseBrain_P1000()
+prediction_result <- PredictCellType(model, input_pattern)
+```
+
+For a full MethScope test, clone the GitHub repository and run the tutorial with
+`inst/extdata/example.cg` and `inst/extdata/mm10_Liu2021.cm`.
+
+## Troubleshooting
+
+If `GenerateInput()` fails or returns unexpected values, check these items first:
+
+- The query `.cg` and reference `.cm` use the same genome build.
+- The query `.cg` was packed against the same CpG coordinate order used by the
+  `.cm` reference.
+- `yame info sample.cg` reports the expected number of CpGs.
+- `yame summary sample.cg` shows nonzero coverage for real sequencing data.
+- For format 3 input, no-coverage CpGs should be `0 0`.
+- For format 4 input, missing values should be `NA`.
+
+## Related resources
+
+- YAME documentation: <https://zhou-lab.github.io/YAME/>
+- YAME storage and format guide: <https://zhou-lab.github.io/YAME/docs/storage.html>
+- ALLCools input-file documentation: <https://lhqing.github.io/ALLCools/start/input_files.html>
+- MethScope tutorial: <https://zhou-lab.github.io/MethScope/articles/MethScope-Tutorial.html>

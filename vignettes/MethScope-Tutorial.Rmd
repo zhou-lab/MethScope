@@ -33,6 +33,7 @@ This tutorial demonstrates a standard MethScope workflow:
 Data and preprocessing resources:
 
 - Example/reference data: <https://github.com/zhou-lab/methscope_data>
+- Convert BED, ALLC, beta/fraction, or binary tracks to `.cg`: <https://zhou-lab.github.io/MethScope/articles/MethScope-Data-Conversion.html>
 - Generate `.cg` input files: <https://zhou-lab.github.io/YAME/>
 - Interpret MRMP patterns: <https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html>
 

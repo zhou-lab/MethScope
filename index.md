@@ -27,6 +27,14 @@ Core workflow:
 - Representation learning for clustering and embedding analysis
 - Cancer cell-of-origin prediction
 
+## Data Preparation
+
+MethScope uses YAME `.cg` files as methylation input. If your data are currently
+stored as BED-like methylation calls, ALLC files, beta/fraction tables, or binary
+tracks, see the conversion tutorial:
+
+- [Converting methylation files to `.cg`](articles/MethScope-Data-Conversion.html)
+
 ## Quick Start
 
 ```r
