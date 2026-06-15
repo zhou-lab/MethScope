@@ -81,7 +81,7 @@ GitHub reference `.cm` files are named by genome build and source dataset:
 - `inst/extdata/hg38_Zhou2025.cm`: human atlas MRMP reference
 - `inst/extdata/hg38_Loyfer2023.cm`: human atlas MRMP reference from Loyfer et al.
 
-## Demo
+## Quick Start
 
 ```r
 library(MethScope)
