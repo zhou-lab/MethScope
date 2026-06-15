@@ -89,6 +89,15 @@ model <- Liu2021_MouseBrain_P1000()
 prediction_result <- PredictCellType(model, input_pattern)
 ```
 
+The GitHub example also includes matching cell-type labels for evaluating
+prediction results:
+
+```{r, eval=FALSE}
+example_label <- read.csv("inst/extdata/example_label.csv")
+cell_type_label <- example_label$label
+stopifnot(length(cell_type_label) == nrow(input_pattern))
+```
+
 ## 3) Train a custom classification model
 
 You can train your own XGBoost model using known labels.
@@ -115,7 +124,8 @@ trained_model_cv <- Input_training(
 
 ```{r, eval=FALSE}
 umap_plot <- PlotUMAP(input_pattern, prediction_result)
-# cell_type_label is the true label vector
+
+# cell_type_label is the true label vector from inst/extdata/example_label.csv
 PlotConfusion(prediction_result, cell_type_label)
 PlotF1(prediction_result, cell_type_label)
 ```
