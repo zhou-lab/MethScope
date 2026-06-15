@@ -71,6 +71,31 @@
 </div>
 <p><strong>MethScope</strong> is an R package for ultra-fast analysis of sparse DNA methylome data using <strong>Most Recurrent Methylation Patterns (MRMPs)</strong>.</p>
 <p>It supports downstream analysis for cell type annotation, cell type deconvolution, unsupervised clustering, cancer cell-of-origin prediction, and missing value imputation.</p>
+<p align="center">
+<img src="reference/figures/overview.png" alt="MethScope workflow overview" width="980"></p>
+<div class="section level2">
+<h2 id="method-overview">Method Overview<a class="anchor" aria-label="anchor" href="#method-overview"></a>
+</h2>
+<p>Sparse single-cell and spatial methylome data are often too sparse to analyze directly at individual CpG resolution. MethScope converts high-dimensional methylation atlas signals into compact MRMP features, then uses these features for fast downstream modeling.</p>
+<p>Core workflow:</p>
+<ul>
+<li>Binarize methylation atlas profiles and consolidate recurrent methylation patterns</li>
+<li>Select top recurrent methylation patterns as MRMP features</li>
+<li>Encode each sample, cell, or spatial pixel into an MRMP-based representation</li>
+<li>Run downstream modeling for annotation, deconvolution, imputation, and representation learning</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="supported-workflows">Supported Workflows<a class="anchor" aria-label="anchor" href="#supported-workflows"></a>
+</h2>
+<ul>
+<li>Cell-type annotation in sparse single-cell methylome profiles</li>
+<li>Mini-bulk deconvolution for mixed-cell samples</li>
+<li>Missing-value imputation for sparse CpG measurements</li>
+<li>Representation learning for clustering and embedding analysis</li>
+<li>Cancer cell-of-origin prediction</li>
+</ul>
+</div>
 <div class="section level2">
 <h2 id="quick-start">Quick Start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>

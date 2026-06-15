@@ -4,6 +4,29 @@
 
 It supports downstream analysis for cell type annotation, cell type deconvolution, unsupervised clustering, cancer cell-of-origin prediction, and missing value imputation.
 
+<p align="center">
+  <img src="reference/figures/overview.png" alt="MethScope workflow overview" width="980">
+</p>
+
+## Method Overview
+
+Sparse single-cell and spatial methylome data are often too sparse to analyze directly at individual CpG resolution. MethScope converts high-dimensional methylation atlas signals into compact MRMP features, then uses these features for fast downstream modeling.
+
+Core workflow:
+
+- Binarize methylation atlas profiles and consolidate recurrent methylation patterns
+- Select top recurrent methylation patterns as MRMP features
+- Encode each sample, cell, or spatial pixel into an MRMP-based representation
+- Run downstream modeling for annotation, deconvolution, imputation, and representation learning
+
+## Supported Workflows
+
+- Cell-type annotation in sparse single-cell methylome profiles
+- Mini-bulk deconvolution for mixed-cell samples
+- Missing-value imputation for sparse CpG measurements
+- Representation learning for clustering and embedding analysis
+- Cancer cell-of-origin prediction
+
 ## Quick Start
 
 ```r
