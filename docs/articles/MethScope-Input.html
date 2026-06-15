@@ -116,6 +116,14 @@ reference with <code>mm10_Liu2021.cm</code>, and use an
 <code>hg38_Loyfer2023.cm</code>.</p>
 <p>The examples below assume that you have a YAME CpG reference file
 called <code>cpg_reference.cr</code>. Convert it to BED once:</p>
+<p>Reference <code>.cr</code> files can be downloaded from the Zhou lab
+KYCG knowledge-base repositories:</p>
+<ul>
+<li>Human hg38: <a href="https://github.com/zhou-lab/KYCGKB_hg38" class="external-link uri">https://github.com/zhou-lab/KYCGKB_hg38</a>
+</li>
+<li>Mouse mm10: <a href="https://github.com/zhou-lab/KYCGKB_mm10" class="external-link uri">https://github.com/zhou-lab/KYCGKB_mm10</a>
+</li>
+</ul>
 <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">yame</span> unpack cpg_reference.cr <span class="kw">|</span> <span class="fu">gzip</span> <span class="op">&gt;</span> cpg_reference.bed.gz</span></code></pre></div>
 <p>The BED file created from the <code>.cr</code> reference defines the
 required row order for the output <code>.cg</code> file.</p>
@@ -272,6 +280,10 @@ sequencing data.</li>
 <li>YAME documentation: <a href="https://zhou-lab.github.io/YAME/" class="external-link uri">https://zhou-lab.github.io/YAME/</a>
 </li>
 <li>YAME storage and format guide: <a href="https://zhou-lab.github.io/YAME/docs/storage.html" class="external-link uri">https://zhou-lab.github.io/YAME/docs/storage.html</a>
+</li>
+<li>KYCGKB hg38 reference files: <a href="https://github.com/zhou-lab/KYCGKB_hg38" class="external-link uri">https://github.com/zhou-lab/KYCGKB_hg38</a>
+</li>
+<li>KYCGKB mm10 reference files: <a href="https://github.com/zhou-lab/KYCGKB_mm10" class="external-link uri">https://github.com/zhou-lab/KYCGKB_mm10</a>
 </li>
 <li>ALLCools input-file documentation: <a href="https://lhqing.github.io/ALLCools/start/input_files.html" class="external-link uri">https://lhqing.github.io/ALLCools/start/input_files.html</a>
 </li>

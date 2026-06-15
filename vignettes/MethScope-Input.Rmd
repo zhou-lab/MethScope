@@ -54,6 +54,12 @@ MRMP reference. For example, use an `mm10` CpG reference with
 The examples below assume that you have a YAME CpG reference file called
 `cpg_reference.cr`. Convert it to BED once:
 
+Reference `.cr` files can be downloaded from the Zhou lab KYCG knowledge-base
+repositories:
+
+- Human hg38: <https://github.com/zhou-lab/KYCGKB_hg38>
+- Mouse mm10: <https://github.com/zhou-lab/KYCGKB_mm10>
+
 ```{bash, eval=FALSE}
 yame unpack cpg_reference.cr | gzip > cpg_reference.bed.gz
 ```
@@ -231,5 +237,7 @@ If `GenerateInput()` fails or returns unexpected values, check these items first
 
 - YAME documentation: <https://zhou-lab.github.io/YAME/>
 - YAME storage and format guide: <https://zhou-lab.github.io/YAME/docs/storage.html>
+- KYCGKB hg38 reference files: <https://github.com/zhou-lab/KYCGKB_hg38>
+- KYCGKB mm10 reference files: <https://github.com/zhou-lab/KYCGKB_mm10>
 - ALLCools input-file documentation: <https://lhqing.github.io/ALLCools/start/input_files.html>
 - MethScope tutorial: <https://zhou-lab.github.io/MethScope/articles/MethScope-Tutorial.html>
