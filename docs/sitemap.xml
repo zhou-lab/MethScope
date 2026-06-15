@@ -34,6 +34,9 @@
     <loc>/reference/Input_training.html</loc>
   </url>
   <url>
+    <loc>/reference/Liu2021_MouseBrain_P1000.html</loc>
+  </url>
+  <url>
     <loc>/reference/PlotConfusion.html</loc>
   </url>
   <url>
@@ -47,6 +50,9 @@
   </url>
   <url>
     <loc>/reference/PredictCellType.html</loc>
+  </url>
+  <url>
+    <loc>/reference/Zhou2025_HumanAtlas_P1000.html</loc>
   </url>
   <url>
     <loc>/reference/confidence_score.html</loc>

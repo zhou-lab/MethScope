@@ -35,7 +35,7 @@ write.table(output_sample,"~/cell_type/20250616_Liu_simu.txt",quote=FALSE,col.na
 yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250616_Liu_simu.txt | yame rowop - -o binasum > ~/intermediate/20250616_Liu_simu.cg
 
 ```{r}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/intermediate/20250616_Liu_simu.cg",reference_pattern)
 
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
@@ -51,7 +51,7 @@ cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
 ### 50 times
 
 ```{r}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 
@@ -117,7 +117,7 @@ ggsave("~/figures/fuh1/20251103_Liu_simu.pdf",width=5,height=4)
 
 ### Random simulations
 ```{r}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 
@@ -245,7 +245,7 @@ train <- read.table("~/cell_type/Zhou2025_sample.txt",sep="\t")
 left_over_cells <- meta_updated %>% filter(!cell %in% train$V1)
 output_sample <- left_over_cells$cell
 
-reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 
@@ -330,7 +330,7 @@ train <- read.table("~/cell_type/Zhou2025_sample.txt",sep="\t")
 left_over_cells <- meta_updated %>% filter(!cell %in% train$V1)
 output_sample <- left_over_cells$cell
 
-reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 
@@ -589,7 +589,7 @@ ggplot(to_plot_labeled, aes(x = True, y = Predicted, color = as.factor(cell_type
 ### cfDNA
 
 ```{r}
-reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Loyfer2023.cm", package = "MethScope")
 input_pattern <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/20240918_ARDS_cfWGBS.cg",reference_pattern)
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer_byCellType.cg",reference_pattern)
 

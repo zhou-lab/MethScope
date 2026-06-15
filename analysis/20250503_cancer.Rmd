@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{R}
-reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/20250105_BloodGBM.cg",reference_pattern)
 
 input_pattern_blood <- rownames(input_pattern)[!grepl("^GBM", rownames(input_pattern))]
@@ -106,8 +106,8 @@ FeaturePlot(
 Bian 2021
 
 ```{r}
-#reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
-reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+#reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Loyfer2023.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/hg38/2018_Bian.cg",reference_pattern)
 
 test_idx <- read.table("~/zhou_lab/projects/20220324_SingleCellMeth/hg38/2018_Bian.cg.idx")
@@ -162,8 +162,8 @@ ggsave("~/figures/fuh1/20250805_Bian_colon_patient.pdf",width=5.2,height=4)
 TCGA/blueprint
 
 ```{r}
-reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
-#reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
+#reference_pattern <- system.file("extdata", "hg38_Loyfer2023.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2018_Zhou.cg",reference_pattern)
 #saveRDS(input_pattern,"~/cell_type/20250508_TCGA.rds")
 
@@ -367,7 +367,7 @@ yame summary -m ~/cell_type/2023_Loyfer.cm 20250703_LoyferTrain.cg | less
 
 ```{r}
 reference_pattern <- "/home/fuh1/cell_type/hg38_95celltypes_LoyferPlusZhou.cm"
-#reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+#reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/tmp/20231215_Loyfer/20250703_LoyferTrain/2023_Loyfer_Train_1.cg",reference_pattern)
 
 ```

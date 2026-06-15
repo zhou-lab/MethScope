@@ -41,9 +41,9 @@
 - `inst/extdata/toy.cg`
 - `inst/extdata/toy.cg.idx`
 - `inst/extdata/toy.cm`
-- `inst/extdata/Liu2021_MouseBrain.cm`
-- `inst/extdata/Loyfer2023_HumanAtlas.cm`
-- `inst/extdata/Zhou2025_HumanAtlas.cm`
+- `inst/extdata/mm10_Liu2021.cm`
+- `inst/extdata/hg38_Loyfer2023.cm`
+- `inst/extdata/hg38_Zhou2025.cm`
 
 ## External references
 

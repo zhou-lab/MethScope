@@ -136,7 +136,7 @@ ggsave("~/figures/fuh1/20250130_Liu2021_Sparse.pdf",width=3,height=3)
 ### Fabyanic mouse brain Joint-snhmC-seq
 
 ```{r}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg",reference_pattern)
 
 Fabyanic_2024_Pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
@@ -246,7 +246,7 @@ write.table(output_sample,"~/cell_type/20250112_Liu2021_training_sample.txt",quo
 yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250112_Liu2021_training_sample.txt -o ~/intermediate/20250212_Liu2021_training.cg
 
 ```{r}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/intermediate/20250212_Liu2021_training.cg",reference_pattern)
 celltype <- read_xlsx("~/cell_type/20220630_Liu2021_mouseBrainWGBS.xlsx")
 sampled_celltype <- celltype$MajorType[match(rownames(input_pattern), celltype$SampleID)]

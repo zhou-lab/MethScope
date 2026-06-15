@@ -111,7 +111,7 @@ ggsave("~/figures/fuh1/20250213_Nichols_VMR.pdf",width=3,height=3)
 ### cell pattern
 
 ```{r}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2022_Nichols_mm10.cg",reference_pattern)
 
 Nichols_2022_Pattern.obj <- CreateSeuratObject(counts = t(input_pattern), assay = "DNAm")
@@ -566,7 +566,7 @@ yame summary -m ~/SpM/Win100k.20220228.cm /home/fuh1/zhou_lab/projects/20220324_
 
 ### select cells to be used
 ```{r}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2023_Fabyanic.cg",reference_pattern)
 
 prediction_result <- PredictCellType(Liu2021_MouseBrain_P1000,input_pattern,smooth = T)
@@ -790,7 +790,7 @@ ggsave("~/figures/fuh1/20251113_Wu_VMR_supervised.pdf",width=5.5,height=5)
 ### Across all the single cell datasets
 
 ```{r}
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 cg_files <- list.files(
   path = "/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/",
   pattern = "\\.cg$",
@@ -844,7 +844,7 @@ yame summary -m ~/SpM/Win100k.20220228.cm ~/intermediate/2019_Argelaguet_dsample
 
 ```{r}
 input_pattern <- input_patterns[["2019_Argelaguet.cg"]]
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/intermediate/2019_Argelaguet_dsample.cg",reference_pattern)
 input_pattern <- imputeRowMean(input_pattern,na_percent = 30)
 rownames(input_pattern) <- read.table("/home/fuh1/zhou_lab/projects/20220324_SingleCellMeth/mm10/2019_Argelaguet.cg.idx")[,1]
@@ -943,7 +943,7 @@ yame summary -m ~/SpM/Win100k.20220228.cm ~/intermediate/2019_Gu_dsample.cg > ~/
 ```{r}
 library(SingleCellExperiment)
 library(slingshot)
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/intermediate/2019_Gu_dsample.cg",reference_pattern)
 input_pattern <- imputeRowMean(input_pattern,na_percent = 30)
 meta <- read_xlsx("~/cell_type/20220313_2019_Gu.xlsx")
@@ -1142,7 +1142,7 @@ for (i in iterative_list){
 GenerateReference(binary_file = "~/intermediate/20250827_iterative/tmp_cpg_b",min_CG = 50,output_path = "~/intermediate/20250827_iterative/patterns.txt")
 
 ### original 500 cg separation
-# yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Liu2021_MouseBrain.cm > ~/intermediate/20250827_iterative/Liu2021_MouseBrain.txt
+# yame unpack ~/cell_type/Tool/MethScope/inst/extdata/mm10_Liu2021.cm > ~/intermediate/20250827_iterative/Liu2021_MouseBrain.txt
 
 reference <- read.table("~/intermediate/20250827_iterative/Liu2021_MouseBrain.txt")
 ix <- ave(seq_len(nrow(reference)), reference$V1, FUN = function(i) (seq_along(i) - 1) %/% 4000)
@@ -1278,7 +1278,7 @@ DimPlot(Gender_Pattern.obj, reduction = 'meth.umap', repel = TRUE, group.by = 'G
 ### Check for sex specific clustering in Loyfer
 
 ```{r}
-#patterns <- "yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Loyfer2023_HumanAtlas.cm"
+#patterns <- "yame unpack ~/cell_type/Tool/MethScope/inst/extdata/hg38_Loyfer2023.cm"
 
 patterns <- "yame unpack /home/fuh1/intermediate/20251118_Loyfer_patterns.cm"
 tbl <- read.table(text=system(patterns, intern=TRUE), header=F)
@@ -1303,7 +1303,7 @@ Chr_enrichment_sex <- Chr_enrichment %>% filter(Mask %in% c("chrX","chrY"))
 Chr_enrichment_sex_enrich <- Chr_enrichment_sex %>% filter(Log2OddsRatio >= 2.5)
 Sex_chromsome_pattern <- paste0("P",unique(Chr_enrichment_sex_enrich$Query))
 
-reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "hg38_Loyfer2023.cm", package = "MethScope")
 
 reference_pattern <- "/home/fuh1/intermediate/20251118_Loyfer_patterns.cm"
 input_pattern <- GenerateInput("/home/fuh1/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg",reference_pattern)

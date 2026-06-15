@@ -161,7 +161,7 @@ PlotF1 <- function(prediction_result,actual_label) {
                       F1_Score = f1_scores)
   f1_df$F1_Score[is.na(f1_df$F1_Score)] <- 0
   f1_df$Class <- stringr::str_remove(f1_df$Class, "^Class: ")
-  ggplot(f1_df, aes(x = reorder(Class, F1_Score), y = F1_Score, fill = F1_Score)) +
+  ggplot(f1_df, aes(x = stats::reorder(Class, F1_Score), y = F1_Score, fill = F1_Score)) +
     geom_bar(stat = "identity") +
     coord_flip() +  # Flip to horizontal for better readability
     scale_fill_distiller(palette = "YlOrBr",direction=1) +  # Better contrast

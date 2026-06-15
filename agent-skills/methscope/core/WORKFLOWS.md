@@ -10,7 +10,7 @@ Typical example:
 library(MethScope)
 
 example_file <- "example.cg"
-reference_pattern <- "Liu2021_MouseBrain.cm"
+reference_pattern <- "mm10_Liu2021.cm"
 input_pattern <- GenerateInput(example_file, reference_pattern)
 ```
 
@@ -25,13 +25,14 @@ Use this path when the user wants:
 Typical example:
 
 ```r
-prediction_result <- PredictCellType(MethScope:::Liu2021_MouseBrain_P1000, input_pattern)
+model <- Liu2021_MouseBrain_P1000()
+prediction_result <- PredictCellType(model, input_pattern)
 ```
 
 Documented built-in model examples include:
 
-- `MethScope:::Liu2021_MouseBrain_P1000`
-- `MethScope:::Zhou2025_HumanAtlas_P1000`
+- `Liu2021_MouseBrain_P1000()`
+- `Zhou2025_HumanAtlas_P1000()`
 
 Use this path when the user wants fast annotation from an existing model.
 

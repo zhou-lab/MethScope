@@ -10,8 +10,8 @@ reference_pattern <- args[1]
 output_dir <- args[2]
 model_trained <- args[3]
 # Define parameters
-#reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
-#reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
+#reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
+#reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
 #output_dir <- "/home/fuh1/intermediate/20250725_Zhou2024"
 file_list <- list.files(output_dir, pattern = "*.cg$", full.names = TRUE)  # Get all .cg files
 

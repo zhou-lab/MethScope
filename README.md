@@ -43,6 +43,7 @@ Use cases supported in the current pipeline:
 
 - **R** >= 4.0 (tested on R 4.5.2 and R 4.6.0)
 - **Operating systems tested**: macOS, Linux (Ubuntu)
+- **System library**: `zlib`
 - R package dependencies (installed automatically): `xgboost`, `dplyr`, `tidyr`, `stringr`, `caret`, `doParallel`, `parallel`, `ggplot2`, `uwot`, `magrittr`, `FNN`, `data.table`, `nnls`
 
 ### Hardware Requirements
@@ -64,30 +65,44 @@ Or install the development version from GitHub:
 devtools::install_github("zhou-lab/MethScope")
 ```
 
-**Typical install time**: approximately 1 minute on a standard laptop.
+## Example Data
+
+The GitHub repository includes a full example query file,
+`inst/extdata/example.cg`, for testing MethScope end to end. After cloning this
+repository, run the example from the repository root.
+
+CRAN packages have size limits, so the CRAN release contains only tiny toy files.
+Use the GitHub example data below for functional testing and cell-type
+prediction.
+
+GitHub reference `.cm` files are named by genome build and source dataset:
+
+- `inst/extdata/mm10_Liu2021.cm`: mouse brain MRMP reference
+- `inst/extdata/hg38_Zhou2025.cm`: human atlas MRMP reference
+- `inst/extdata/hg38_Loyfer2023.cm`: human atlas MRMP reference from Loyfer et al.
 
 ## Demo
-
-A small example dataset is bundled with the package in `inst/extdata/`. The following demo runs end-to-end cell type annotation using the included example `.cg` file and a pre-built mouse brain MRMP reference.
 
 ```r
 library(MethScope)
 
-# Locate bundled example files
-example_file      <- system.file("extdata", "example.cg", package = "MethScope")
-reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
+# Run this from the root of a cloned zhou-lab/MethScope repository.
+example_file      <- "inst/extdata/example.cg"
+reference_pattern <- "inst/extdata/mm10_Liu2021.cm"
 
-# Step 1: Generate cell-by-MRMP embedding matrix
 input_pattern <- GenerateInput(example_file, reference_pattern)
 
-# Step 2: Predict cell types using the built-in pre-trained mouse brain model
-prediction_result <- PredictCellType(MethScope:::Liu2021_MouseBrain_P1000, input_pattern)
+model <- Liu2021_MouseBrain_P1000()
+prediction_result <- PredictCellType(model, input_pattern)
 
-# Step 3: Visualize results
 umap_plot <- PlotUMAP(input_pattern, prediction_result)
 ```
 
-Expected output: a cell-by-MRMP matrix (`input_pattern`) and a data frame of predicted cell type labels with confidence scores (`prediction_result`). The UMAP plot will display cells colored by predicted cell type. Expected runtime on the bundled example: a few seconds.
+Expected output: a cell-by-MRMP matrix (`input_pattern`) and a data frame of
+predicted cell type labels with confidence scores (`prediction_result`). The
+full `mm10_Liu2021.cm` reference contains more than 1000 MRMPs; the built-in
+mouse brain model uses the first 1000 patterns. The UMAP plot will display cells
+colored by predicted cell type.
 
 ## Tutorials and documentation
 
