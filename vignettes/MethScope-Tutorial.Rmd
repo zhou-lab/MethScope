@@ -130,6 +130,7 @@ trained_model_cv <- Input_training(
 umap_plot <- PlotUMAP(input_pattern, prediction_result)
 
 # cell_type_label is the true label vector from inst/extdata/example_label.csv
+# The labels follow the .cg.idx sample order, so keep the .idx file next to the .cg file.
 PlotConfusion(prediction_result, cell_type_label)
 PlotF1(prediction_result, cell_type_label)
 ```

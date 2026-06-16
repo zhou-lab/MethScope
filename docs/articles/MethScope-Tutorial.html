@@ -282,6 +282,7 @@ list of xgb_parameters:</p>
 <code class="sourceCode R"><span><span class="va">umap_plot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PlotUMAP.html">PlotUMAP</a></span><span class="op">(</span><span class="va">input_pattern</span>, <span class="va">prediction_result</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># cell_type_label is the true label vector from inst/extdata/example_label.csv</span></span>
+<span><span class="co"># The labels follow the .cg.idx sample order, so keep the .idx file next to the .cg file.</span></span>
 <span><span class="fu"><a href="../reference/PlotConfusion.html">PlotConfusion</a></span><span class="op">(</span><span class="va">prediction_result</span>, <span class="va">cell_type_label</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/PlotF1.html">PlotF1</a></span><span class="op">(</span><span class="va">prediction_result</span>, <span class="va">cell_type_label</span><span class="op">)</span></span></code></pre></div>
 <p align="center">
