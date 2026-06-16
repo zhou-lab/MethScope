@@ -145,6 +145,10 @@ Some reference matrix examples are available in:
 ```{r, eval=FALSE}
 reference_pattern <- "mm10_Liu2021.cm"
 reference_input <- readRDS("mm10_Liu2021_ref.rds")
+
+# Imputation is needed before deconvolution if input_pattern contains missing values.
+input_pattern <- imputeRowMean(input_pattern)
+
 cell_proportion <- nnls_deconv(reference_input, input_pattern)
 ```
 

@@ -290,6 +290,10 @@ reference matrix examples are available in: <a href="https://github.com/zhou-lab
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="st">"mm10_Liu2021.cm"</span></span>
 <span><span class="va">reference_input</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"mm10_Liu2021_ref.rds"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Imputation is needed before deconvolution if input_pattern contains missing values.</span></span>
+<span><span class="va">input_pattern</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/imputeRowMean.html">imputeRowMean</a></span><span class="op">(</span><span class="va">input_pattern</span><span class="op">)</span></span>
+<span></span>
 <span><span class="va">cell_proportion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nnls_deconv.html">nnls_deconv</a></span><span class="op">(</span><span class="va">reference_input</span>, <span class="va">input_pattern</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
