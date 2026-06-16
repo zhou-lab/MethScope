@@ -49,6 +49,10 @@ CRAN packages have size limits, so the CRAN release contains only tiny toy files
 Use the GitHub example data below for functional testing and cell-type
 prediction.
 
+Keep the `.cg.idx` index file in the same folder as the `.cg` file. For example,
+`inst/extdata/example.cg.idx` should be next to `inst/extdata/example.cg` so that
+sample names and sample order are available when the input is generated.
+
 GitHub reference `.cm` files are named by genome build and source dataset:
 `mm10_Liu2021.cm`, `hg38_Zhou2025.cm`, and `hg38_Loyfer2023.cm`.
 
