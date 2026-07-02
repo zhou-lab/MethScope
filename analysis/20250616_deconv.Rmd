@@ -35,7 +35,7 @@ write.table(output_sample,"~/cell_type/20250616_Liu_simu.txt",quote=FALSE,col.na
 yame subset /mnt/isilon/zhou_lab/projects/20220324_SingleCellMeth/mm10/2021_Liu.cg -l ~/cell_type/20250616_Liu_simu.txt | yame rowop - -o binasum > ~/intermediate/20250616_Liu_simu.cg
 
 ```{r}
-reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
 input_pattern <- GenerateInput("/home/fuh1/intermediate/20250616_Liu_simu.cg",reference_pattern)
 
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
@@ -48,10 +48,10 @@ reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
 ```
 
-### 50 times
+### 25 times
 
 ```{r}
-reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 
@@ -117,7 +117,7 @@ ggsave("~/figures/fuh1/20251103_Liu_simu.pdf",width=5,height=4)
 
 ### Random simulations
 ```{r}
-reference_pattern <- system.file("extdata", "mm10_Liu2021.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "Liu2021_MouseBrain.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/mm10/2021_LiuMajorTypePseudo.cg",reference_pattern)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 
@@ -245,7 +245,7 @@ train <- read.table("~/cell_type/Zhou2025_sample.txt",sep="\t")
 left_over_cells <- meta_updated %>% filter(!cell %in% train$V1)
 output_sample <- left_over_cells$cell
 
-reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 
@@ -330,7 +330,7 @@ train <- read.table("~/cell_type/Zhou2025_sample.txt",sep="\t")
 left_over_cells <- meta_updated %>% filter(!cell %in% train$V1)
 output_sample <- left_over_cells$cell
 
-reference_pattern <- system.file("extdata", "hg38_Zhou2025.cm", package = "MethScope")
+reference_pattern <- system.file("extdata", "Zhou2025_HumanAtlas.cm", package = "MethScope")
 reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 30)
 
@@ -450,12 +450,30 @@ sbatch ~/cell_type/20250718_deconv.sh
 
 ```{r}
 #results <- readRDS("~/cell_type/20250718_deconv.rds")
-results <- readRDS("~/cell_type/20251104_deconv_18.rds")
+#results <- readRDS("~/cell_type/20251104_deconv_18.rds")
+
+Pattern_annotation <- read.table(text=system("yame unpack ~/cell_type/Tool/MethScope/inst/extdata/Zhou2025_HumanAtlas.cm", intern=TRUE), header=F)
+
+Pattern_annotation <- Pattern_annotation %>%
+  group_by(V1) %>%                                
+  mutate(
+    grp_id = ceiling(row_number() / 1000),    
+    V1_new = if_else(V1 %in% c("Pna","P1","P2"), V1, paste0(V1, "_", grp_id))
+  ) %>%
+  ungroup() %>%
+  select(-grp_id)
+
+#write.table(Pattern_annotation$V1_new,"./patterns.txt",quote=FALSE,col.names = FALSE,row.names = FALSE)
+# yame pack -f s ./patterns.txt ./patterns.cm
+
+
+results <- readRDS("~/cell_type/20260101_deconv_16_b.rds")
+#results_ref <- readRDS("~/cell_type/20260101_deconv_b.rds")
 to_plot_all <- c()
 
 for (list_number in 1:4){
   selected_entries_estimate <- results[[2]][[list_number]]
-  cell_proportion_estimate <- results[[1]][[list_number]]
+  cell_proportion_estimate <- results[[4]][[list_number]]
   random_numbers_estimate <- results[[3]][[list_number]]
 
   selected_entries_estimate <- t(apply(selected_entries_estimate,1, function(x) {
@@ -467,17 +485,17 @@ for (list_number in 1:4){
 
   cell_matrix <- as.data.frame(cell_proportion_estimate)
   cell_pairs <- as.data.frame(selected_entries_estimate)
-
   cell_matrix$cell_type <- rownames(cell_matrix)
   cell_matrix$cell_type <- gsub("^B_(Mem|Naive|Plasma)$", "B_cell", cell_matrix$cell_type)
   cell_matrix$cell_type <- gsub("^NK_(CD16|CD56)$", "NK_cell", cell_matrix$cell_type)
-  cell_matrix$cell_type <- gsub("^Tnaive_(CD4|CD8)$", "Tnaive", cell_matrix$cell_type)
+  cell_matrix$cell_type <- gsub("^Tnaive_(CD4|CD8)$", "T_cell", cell_matrix$cell_type)
+  cell_matrix$cell_type <- gsub("^Tmem_(CD4|CD8)$", "T_cell", cell_matrix$cell_type)
   cell_matrix_summarized <- cell_matrix %>%
     group_by(cell_type) %>%
-    summarise(across(starts_with("V"), sum))
+    dplyr::summarise(across(starts_with("V"), sum))
 
   rownames(cell_matrix_summarized) <- cell_matrix_summarized$cell_type
-  cell_matrix <- cell_matrix_summarized %>% select(-cell_type)
+  cell_matrix <- cell_matrix_summarized %>% dplyr::select(-cell_type)
 
   cell_matrix <- as.data.frame(cell_matrix)
   rownames(cell_matrix) <- rownames(cell_matrix_summarized)
@@ -501,10 +519,76 @@ for (list_number in 1:4){
       stringsAsFactors = FALSE
     )
   }
-
-  final_df <- do.call(rbind, matched_list)
-
   random_numbers_estimate <- prop.table(as.matrix(random_numbers_estimate), margin = 2)
+  value_mat <- sapply(matched_list, function(x) x$value)
+  final_df <- do.call(rbind, matched_list)
+  combined_vector <- unlist(as.data.frame(random_numbers_estimate), use.names = FALSE)
+  final_df_gt <- data.frame(random_numbers = combined_vector)
+  to_plot <- cbind(final_df,final_df_gt)
+  colnames(to_plot) <- c("cell_type","simulation_id","Predicted","True")
+  diff <- abs(to_plot$Predicted - to_plot$True)
+  to_plot$n_cell = list_number+1
+  to_plot_all <- rbind(to_plot_all,to_plot)
+}
+
+results_epidish <- readRDS("~/cell_type/20260223_deconv_epiz.rds")
+results <- readRDS("~/cell_type/20260101_deconv_18_b.rds")
+#results <- readRDS("~/cell_type/20260101_deconv_b.rds")
+to_plot_all <- c()
+for (list_number in 1:4){
+  selected_entries_estimate <- results[[2]][[list_number]]
+  cell_proportion_estimate <- results_epidish[[list_number]]
+  cell_proportion_estimate <- cell_proportion_estimate[, seq(4, ncol(cell_proportion_estimate), by = 4)]
+  colnames(cell_proportion_estimate) <- make.unique(colnames(cell_proportion_estimate))
+  colnames(cell_proportion_estimate) <- paste0("V",colnames(cell_proportion_estimate))
+  random_numbers_estimate <- results[[3]][[list_number]]
+
+  selected_entries_estimate <- t(apply(selected_entries_estimate,1, function(x) {
+    gsub(" ", "_", x)
+  }))
+  selected_entries_estimate <- t(apply(selected_entries_estimate,1, function(x) {
+    gsub("/", "_", x)
+  }))
+
+  cell_matrix <- as.data.frame(cell_proportion_estimate)
+  cell_pairs <- as.data.frame(selected_entries_estimate)
+  cell_matrix$cell_type <- rownames(cell_matrix)
+  cell_matrix$cell_type <- gsub("^B_(Mem|Naive|Plasma)$", "B_cell", cell_matrix$cell_type)
+  cell_matrix$cell_type <- gsub("^NK_(CD16|CD56)$", "NK_cell", cell_matrix$cell_type)
+  cell_matrix$cell_type <- gsub("^Tnaive_(CD4|CD8)$", "T_cell", cell_matrix$cell_type)
+  cell_matrix$cell_type <- gsub("^Tmem_(CD4|CD8)$", "T_cell", cell_matrix$cell_type)
+  cell_matrix_summarized <- cell_matrix %>%
+    group_by(cell_type) %>%
+    dplyr::summarise(across(starts_with("V"), sum))
+
+  rownames(cell_matrix_summarized) <- cell_matrix_summarized$cell_type
+  cell_matrix <- cell_matrix_summarized %>% dplyr::select(-cell_type)
+
+  cell_matrix <- as.data.frame(cell_matrix)
+  rownames(cell_matrix) <- rownames(cell_matrix_summarized)
+
+  matched_list <- list()
+  for (i in seq_len(ncol(cell_pairs))) {
+    col_entries <- cell_pairs[[i]]
+    col_name <- colnames(cell_matrix)[i] 
+    values <- mapply(function(cell, index) {
+      if (cell %in% rownames(cell_matrix)) {
+        cell_matrix[cell, i]
+      } else {
+        NA 
+      }
+    }, col_entries, seq_along(col_entries))
+
+   matched_list[[i]] <- data.frame(
+      cell_type = col_entries,
+      column = col_name,
+      value = values,
+      stringsAsFactors = FALSE
+    )
+  }
+  random_numbers_estimate <- prop.table(as.matrix(random_numbers_estimate), margin = 2)
+  value_mat <- sapply(matched_list, function(x) x$value)
+  final_df <- do.call(rbind, matched_list)
   combined_vector <- unlist(as.data.frame(random_numbers_estimate), use.names = FALSE)
   final_df_gt <- data.frame(random_numbers = combined_vector)
   to_plot <- cbind(final_df,final_df_gt)
@@ -520,14 +604,16 @@ library(dplyr)
 to_plot <- to_plot_all
 
 mse_stats <- to_plot %>%
-  group_by(n_cell) %>%
-  summarise(
-    mse = mean((Predicted - True)^2),
+  dplyr::group_by(n_cell) %>%
+  dplyr::summarise(
+    rmse = sqrt(mean((Predicted - True)^2)),
+    rsq  = cor(Predicted, True)^2,   # <-- R² added
     .groups = "drop"
   ) %>%
   mutate(
-    label = paste0("MSE = ", round(mse, 4)),
-    y_pos = 0.97 - 0.05 * (as.numeric(as.factor(n_cell)) - 1)
+    label = paste0("RMSE = ", round(rmse, 3),
+                   " R² = ", round(rsq, 3)),   # combine labels
+    y_pos = 0.99 - 0.05 * (as.numeric(as.factor(n_cell)) - 1)
   )
 
 n_labels <- paste0("n = ", sort(unique(to_plot$n_cell)))
@@ -542,7 +628,7 @@ ggplot(to_plot_labeled, aes(x = True, y = Predicted, color = as.factor(n_cell), 
   geom_text(data = mse_stats,
             aes(x = 0, y = y_pos, label = label, color = as.factor(n_cell)),
             inherit.aes = FALSE,
-            hjust = 0, vjust = 1, size = 4, show.legend = FALSE) +
+            hjust = 0, vjust = 1, size = 3, show.legend = FALSE) +
   scale_color_brewer(palette = "Spectral", labels = n_labels) +
   scale_shape_manual(values = c(0, 1, 2, 3, 4, 5, 6, 7)) + 
   labs(title = "",
@@ -553,7 +639,7 @@ ggplot(to_plot_labeled, aes(x = True, y = Predicted, color = as.factor(n_cell), 
   theme_bw() +
   theme(text = element_text(size = 11),
         panel.grid.minor = element_blank())+xlim(0,1)+ylim(0,1)
-ggsave("~/figures/fuh1/20250728_immune_blood_18.pdf",width=4.5,height=4)
+ggsave("~/figures/fuh1/20260223_immune_blood_18_epidish.pdf",width=4.5,height=4)
 
 ggplot(to_plot_labeled, aes(x = True, y = Predicted, color = as.factor(n_cell))) +
   geom_point(size = 1.5) +
@@ -584,18 +670,103 @@ ggplot(to_plot_labeled, aes(x = True, y = Predicted, color = as.factor(cell_type
   theme(text = element_text(size = 11),
         panel.grid.minor = element_blank())+ylim(0,0.95)
 #ggsave("~/figures/fuh1/20250723_immune_blood_celltype.pdf",width=4,height=3.5)
+
+
+
+### RMSE bar plot
+RMSE_MethScope <- c(0.032,0.041,0.045,0.043)
+RMSE_100K <- c(0.167,0.15,0.092,0.094)
+RMSE_Loyfer <- c(0.163,0.1,0.077,0.087)
+RMSE_EpiDISH <- c(0.064,0.061,0.045,0.036)
+
+# N : 16
+# RMSE_MethScope <- c(0.086,0.095,0.069,0.1)
+# RMSE_100K <- c(0.328,0.255,0.173,0.173)
+# RMSE_Loyfer <- c(0.335,0.276,0.196,0.228)
+# RMSE_EpiDISH <- c(0.498,0.345,0.272,0.239)
+
+# N : 17
+# RMSE_MethScope <- c(0.065,0.07,0.052,0.064)
+# RMSE_100K <- c(0.277,0.202,0.167,0.149)
+# RMSE_Loyfer <- c(0.27,0.225,0.177,0.174)
+# RMSE_EpiDISH <- c(0.494,0.353,0.27,0.244)
+
+# N : 18
+# RMSE_MethScope <- c(0.051,0.049,0.046,0.058)
+# RMSE_100K <- c(0.244,0.23,0.167,0.134)
+# RMSE_Loyfer <- c(0.228,0.192,0.158,0.16)
+# RMSE_EpiDISH <- c(0.503,0.323,0.276,0.225)
+
+Number_cell_types <- c(2,3,4,5)
+df <- data.frame(
+  Number_cell_types,
+  MethScope = RMSE_MethScope,
+  `100K` = RMSE_100K,
+  Loyfer = RMSE_Loyfer,
+  EpiDISH = RMSE_EpiDISH
+)
+df_long <- df %>%
+  tidyr::pivot_longer(
+    cols = -Number_cell_types,
+    names_to = "Method",
+    values_to = "RMSE"
+  )
+df_long$Method[which(df_long$Method == "X100K")] <- "100K"
+df_long$Method <- factor(df_long$Method,levels=c("EpiDISH","100K","Loyfer","MethScope"))
+ggplot(df_long, aes(x = factor(Number_cell_types),
+                    y = RMSE,
+                    fill = Method)) +
+  geom_bar(stat = "identity",
+           position = position_dodge(width = 0.9)) +
+  labs(
+    x = "Number of Cell Types",
+    y = "RMSE",
+    fill = "Method"
+  ) +
+  theme_bw(base_size = 14)+theme(panel.grid.minor = element_blank(),panel.grid.major = element_blank()) + scale_fill_manual(values = c(
+  "MethScope" = "#66C2A5",  # teal
+  "100K"      = "#FC8D62",  # soft orange
+  "Loyfer"    = "#8DA0CB",   # lavender-blue
+  "EpiDISH"   = "#9b3f5c"
+))+ylim(0,0.51)
+ggsave("~/figures/fuh1/20260223_immune_blood_fullbar.pdf",width=5,height=3)
 ```
 
 ### cfDNA
 
 ```{r}
-reference_pattern <- system.file("extdata", "hg38_Loyfer2023.cm", package = "MethScope")
-input_pattern <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/20240918_ARDS_cfWGBS.cg",reference_pattern)
-reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer_byCellType.cg",reference_pattern)
+reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
 
+#reference_pattern <- "/home/fuh1/cell_type/2025_Zhou_deconv.cm"
+input_pattern <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/20240918_ARDS_cfWGBS.cg",reference_pattern)
+#reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer_byCellType.cg",reference_pattern)
+reference_input <- GenerateInput("/home/fuh1/tmp/20231211_Loyfer.cg",reference_pattern)
+#reference_input <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2025_ZhouPseudo.cg",reference_pattern)
+
+
+input_pattern <- input_pattern[, setdiff(colnames(input_pattern), "Pna")]
+    
 input_pattern_imputed <- imputeRowMean(input_pattern,na_percent = 15)
 reference_input_imputed <- imputeRowMean(reference_input,na_percent = 15)
-cell_proportion <- nnls_deconv(reference_input_imputed,input_pattern_imputed)
+
+ref_use <- c(
+  "20231211_Loyfer_Blood.Granulocytes",
+  "20231211_Loyfer_Blood.Monocytes",
+  "20231211_Loyfer_Blood.NK",
+  "20231211_Loyfer_Blood.B",
+  "20231211_Loyfer_Blood.T.CD4",
+  "20231211_Loyfer_Blood.T.CD8",
+  "20231211_Loyfer_Lung.Alveolar.Epithel",
+  "20231211_Loyfer_Lung.Alveolar.Endothel",
+  "20231211_Loyfer_Lung.Alveolar.Macrophages",
+  "20231211_Loyfer_Aorta.Endothel",
+  "20231211_Loyfer_Liver.Hepatocytes",
+  "20231211_Loyfer_Kidney.Tubular.Epithelial",
+  "20231211_Loyfer_Bone_marrow.Erythrocyte_progenitors"
+)
+
+reference_input_imputed_select <- reference_input_imputed[ref_use,]
+cell_proportion <- nnls_deconv(reference_input_imputed_select,input_pattern_imputed,number_patterns = ncol(reference_input_imputed))
 
 cell_proportion_filtered <- cell_proportion[rowSums(cell_proportion <= 0.02) <= 4, ]
 cell_proportion_filtered <- rbind(cell_proportion_filtered,cell_proportion["hepatocyte",])
@@ -609,5 +780,191 @@ pheatmap(cell_proportion_filtered,
          scale = "none")
 dev.off()
 
+
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tibble)
+
+df2 <- as.data.frame(cell_proportion) %>%
+  rownames_to_column("celltype")
+df2 <- df2 %>%
+  mutate(avg = rowMeans(select(., (ncol(.)-5):ncol(.))))
+df2 <- df2 %>%
+  mutate(celltype = str_remove(celltype, ".*_"))
+df2 <- df2 %>%
+  filter(avg > 0)
+
+library(viridis)
+
+df2 <- df2 %>%
+  arrange(desc(avg)) %>%
+  mutate(prop = avg / sum(avg))
+
+cell_colors <- c(
+  "Blood.Granulocytes" = "#1f4e79",
+  "Blood.Monocytes" = "#2e75b6",
+  "Blood.NK" = "#5b9bd5",
+  "Blood.T.CD4" = "#9dc3e6",
+  "Blood.T.CD8" = "#cfe2f3",
+  "Blood.B" = "#203864",
+  
+  "Lung.Alveolar.Epithelial" = "#c00000",
+  "Lung.Alveolar.Endothel" = "#e46c0a",
+  "Lung.Alveolar.Macrophages" = "#7f0000",
+  
+  "Liver.Hepatocytes" = "#f1c232",
+  "Kidney.Tubular.Epithelial" = "#6aa84f",
+  
+  "Aorta.Endothel" = "#7f7f7f",
+  "progenitors" = "#7030a0"
+)
+
+
+ggplot(df2, aes(x = "", y = avg, fill = celltype)) +
+  geom_col(width = 1) +
+  coord_polar("y") +
+  #scale_fill_viridis_d(option = "turbo") +
+  scale_fill_manual(values = cell_colors)+
+  geom_text(
+    aes(label = ifelse(prop > 0.10, scales::percent(prop), NA)),
+    position = position_stack(vjust = 0.5),
+    size = 4,
+    na.rm = TRUE
+  ) +
+  theme_void() +
+  guides(fill = guide_legend(ncol = 2)) + labs(fill = "ARDS cfDNA")
+ggsave("~/figures/fuh1/20250211_ARDS_deconvolution.pdf",width=6,height=4)
+```
+
+### cfDNA heatmap
+
+```{r}
+reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+input_pattern <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/2023_Loyfer.cg",reference_pattern)
+ref_use <- c(
+  "Blood.Granulocytes",
+  "Blood.Monocytes",
+  "Blood.NK",
+  "Blood.B",
+  "Blood.T.CD4",
+  "Blood.T.CD8",
+  "Lung.Alveolar.Epithel",
+  "Lung.Alveolar.Endothel",
+  "Liver.Hepatocytes",
+  "Bone_marrow.Erythrocyte_progenitors"
+)
+ref_pattern <- gsub("\\.", "-", ref_use)
+pattern <- paste(ref_pattern, collapse = "|")
+selected_rows <- rownames(input_pattern)[grep(pattern, rownames(input_pattern))]
+
+input_pattern_selected <- input_pattern[selected_rows,3:1000]
+df_num <- input_pattern_selected[, sapply(input_pattern_selected, is.numeric), drop = FALSE]
+col_var <- apply(df_num, 2, var, na.rm = TRUE)
+threshold <- 0.01
+df_filtered <- df_num[, col_var > threshold]
+
+selected_patterns <- c("P30","P199","P171","P105","P294","P105","P376","P551","P455","P456","P93","P285","P364","P473","P484",
+                       "P56","P13","P90","P118","P66","P90","P135","P144","P149","P40","P148","P187","P217","P238","P319",
+                       "P179","P408","P419","P423","P452","P468","P4","P28","P55","P76","P77")
+df_filtered <- df_num[,colnames(df_num) %in% selected_patterns]
+
+df <- df_filtered
+mat <- t(as.matrix(df))
+mat <- apply(mat, 2, as.numeric)
+rownames(mat) <- colnames(df)
+colnames(mat) <- rownames(df)
+library(ComplexHeatmap)
+library(circlize)
+library(pals)
+
+col_fun <- circlize::colorRamp2(
+  seq(min(mat, na.rm=TRUE), max(mat, na.rm=TRUE), length.out = 256),
+  pals::parula(256)
+)
+
+Heatmap(
+  mat,
+  name = "value",
+  col = col_fun,
+  cluster_rows = TRUE,
+  cluster_columns = TRUE,
+  show_row_names = FALSE,
+  show_column_names = TRUE,
+  show_row_dend = FALSE,
+  show_column_dend = FALSE
+)
+
+reference_pattern <- system.file("extdata", "Loyfer2023_HumanAtlas.cm", package = "MethScope")
+test_pattern <- GenerateInput("/mnt/isilon/zhou_lab/projects/20230727_all_public_WGBS/hg38/20240918_ARDS_cfWGBS.cg",reference_pattern)
+test_pattern <- test_pattern[3:8,]
+test_pattern <- as.data.frame(test_pattern)
+test_pattern <- test_pattern[, colSums(is.na(test_pattern)) == 0]
+test_pattern_filtered <- test_pattern[, colSums(test_pattern > 0.7) != nrow(test_pattern)]
+test_pattern_filtered <- test_pattern_filtered[, colSums(test_pattern_filtered < 0.3) != nrow(test_pattern_filtered)]
+
+
+df_num <-  input_pattern[selected_rows,]
+df_filtered <- df_num[,colnames(df_num) %in% colnames(test_pattern_filtered)]
+df_filtered <- df_filtered[, colSums(is.na(df_filtered)) == 0]
+df_filtered <- df_filtered[, colSums(df_filtered < 0.3) <= 25]
+test_pattern_filtered <- test_pattern_filtered[,colnames(test_pattern_filtered) %in% colnames(df_filtered)]
+
+### remove b mem
+df_filtered <- df_filtered[-c(31,32),]
+
+
+mat1 <- t(as.matrix(df_filtered))
+mat1 <- mat1[, c((ncol(mat1)-2):ncol(mat1), 1:(ncol(mat1)-3))]
+mat1 <- mat1[-c(321,165,304,224,65,144,39,99,31,41,77,17,125,74,84,309), ]
+mat2 <- t(as.matrix(test_pattern))
+mat2 <- mat2[rownames(mat1),,drop = FALSE]
+
+
+rng <- range(c(mat1, mat2), na.rm = TRUE)
+col_fun <- circlize::colorRamp2(
+  seq(rng[1], rng[2], length.out = 256),
+  pals::parula(256)
+)
+colnames(mat1) <- sub(
+  "^[^_]+_(.*)-[^-]+$",
+  "\\1",
+  colnames(mat1)
+)
+ht1 <- Heatmap(
+  mat1, name = "value",
+  col = col_fun,
+  cluster_rows = TRUE, cluster_columns = FALSE,
+  show_row_names = FALSE, show_column_names = TRUE,
+  show_row_dend = FALSE, show_column_dend = FALSE
+)
+
+ht2 <- Heatmap(
+  mat2, name = "value",   
+  col = col_fun,
+  cluster_rows = FALSE,  
+  cluster_columns = TRUE,
+  show_row_names = FALSE, show_column_names = FALSE,
+  show_row_dend = FALSE, show_column_dend = FALSE
+)
+
+ht <- ht1 + ht2
+
+# row_order(ht1)
+# mat_new <- mat1[-c(321,165,304,224,65,144,39,99,31,41,77,17,125,74,84,309), ]
+# Heatmap(mat_new,name = "value",
+#   col = col_fun,
+#   cluster_rows = TRUE, cluster_columns = FALSE,
+#   show_row_names = FALSE, show_column_names = TRUE,
+#   show_row_dend = FALSE, show_column_dend = FALSE)
+
+pdf("~/figures/fuh1/20250218_ARDS_deconvolution_select.pdf",width=10,height=10)
+draw(
+  ht,
+  merge_legends = TRUE,        
+  heatmap_legend_side = "right",
+  annotation_legend_side = "right"
+)
+dev.off()
 ```
 
