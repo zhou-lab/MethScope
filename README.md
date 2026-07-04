@@ -146,7 +146,7 @@ Keep `agent-skills/methscope/core/` in the repository, because the Claude instru
 
 ## Data resources
 
-- Example and reference data: [zhou-lab/methscope_data](https://github.com/zhou-lab/methscope_data)
+- Example `.cg`, `.cm`, and reference `.rds` files are bundled in `inst/extdata`
 - `.cg` generation and preprocessing: [YAME](https://zhou-lab.github.io/YAME/)
 - Pattern interpretation: [knowYourCG](https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html)
 

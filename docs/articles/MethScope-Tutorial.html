@@ -94,7 +94,8 @@
 </ul>
 <p>Data and preprocessing resources:</p>
 <ul>
-<li>Example/reference data: <a href="https://github.com/zhou-lab/methscope_data" class="external-link uri">https://github.com/zhou-lab/methscope_data</a>
+<li>Example <code>.cg</code>, <code>.cm</code>, and reference
+<code>.rds</code> files are bundled in <code>inst/extdata</code>
 </li>
 <li>Prepare MethScope input from BED, ALLC, beta/fraction, or binary
 tracks: <a href="https://zhou-lab.github.io/MethScope/articles/MethScope-Input.html" class="external-link uri">https://zhou-lab.github.io/MethScope/articles/MethScope-Input.html</a>
@@ -291,11 +292,13 @@ list of xgb_parameters:</p>
 <div class="section level2">
 <h2 id="cell-type-deconvolution">5) Cell-type deconvolution<a class="anchor" aria-label="anchor" href="#cell-type-deconvolution"></a>
 </h2>
-<p>Estimate cell-type proportions using <code><a href="../reference/nnls_deconv.html">nnls_deconv()</a></code>. Some
-reference matrix examples are available in: <a href="https://github.com/zhou-lab/methscope_data" class="external-link uri">https://github.com/zhou-lab/methscope_data</a></p>
+<p>Estimate cell-type proportions using <code><a href="../reference/nnls_deconv.html">nnls_deconv()</a></code>.
+Bundled reference matrices are available in <code>inst/extdata</code>,
+including <code>mm10_Liu2021_ref.rds</code> and
+<code>hg38_Zhou2025_ref.rds</code>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">reference_pattern</span> <span class="op">&lt;-</span> <span class="st">"mm10_Liu2021.cm"</span></span>
-<span><span class="va">reference_input</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"mm10_Liu2021_ref.rds"</span><span class="op">)</span></span>
+<span><span class="va">reference_input</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"inst/extdata/mm10_Liu2021_ref.rds"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Imputation is needed before deconvolution if input_pattern contains missing values.</span></span>
 <span><span class="va">input_pattern</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/imputeRowMean.html">imputeRowMean</a></span><span class="op">(</span><span class="va">input_pattern</span><span class="op">)</span></span>

@@ -32,7 +32,7 @@ This tutorial demonstrates a standard MethScope workflow:
 
 Data and preprocessing resources:
 
-- Example/reference data: <https://github.com/zhou-lab/methscope_data>
+- Example `.cg`, `.cm`, and reference `.rds` files are bundled in `inst/extdata`
 - Prepare MethScope input from BED, ALLC, beta/fraction, or binary tracks: <https://zhou-lab.github.io/MethScope/articles/MethScope-Input.html>
 - Generate `.cg` input files: <https://zhou-lab.github.io/YAME/>
 - Interpret MRMP patterns: <https://www.bioconductor.org/packages/release/bioc/html/knowYourCG.html>
@@ -144,12 +144,12 @@ PlotF1(prediction_result, cell_type_label)
 ## 5) Cell-type deconvolution
 
 Estimate cell-type proportions using `nnls_deconv()`.
-Some reference matrix examples are available in:
-<https://github.com/zhou-lab/methscope_data>
+Bundled reference matrices are available in `inst/extdata`, including
+`mm10_Liu2021_ref.rds` and `hg38_Zhou2025_ref.rds`.
 
 ```{r, eval=FALSE}
 reference_pattern <- "mm10_Liu2021.cm"
-reference_input <- readRDS("mm10_Liu2021_ref.rds")
+reference_input <- readRDS("inst/extdata/mm10_Liu2021_ref.rds")
 
 # Imputation is needed before deconvolution if input_pattern contains missing values.
 input_pattern <- imputeRowMean(input_pattern)
