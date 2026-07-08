@@ -1,0 +1,86 @@
+---
+title: "Pretrained models & bundles"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Pretrained models & bundles}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+## Overview
+
+Pretrained MethScope models are distributed from the
+[methscope_data](https://github.com/zhou-lab/methscope_data) repository as
+**self-contained bundles** — a single file that carries *both* the model and the
+MRMP feature definition it needs, so a query `.cg` can be run without supplying a
+separate `.cm` reference.
+
+There are three bundle kinds:
+
+| file      | task                          | run with            |
+|-----------|-------------------------------|---------------------|
+| `.ubjx`   | cell-type / trait classifier  | `methscope predict` |
+| `.refx`   | deconvolution reference       | `methscope deconv`  |
+| `.updecx` | CpG-level upscaling decoder   | `methscope upscale` |
+
+## Using a pretrained bundle
+
+Because a bundle carries its own MRMP, pass it directly — no unbundling needed:
+
+```{bash, eval=FALSE}
+methscope predict query.cg   hg38_celltype.ubjx     > labels.tsv
+methscope deconv  mixture.cg  hg38_65celltypes.refx > props.tsv
+methscope upscale -o out.cg   hg38_10k1.updecx query.cg
+```
+
+Inspect a bundle — its framework mark, on-disk layout, and model summary —
+without running it:
+
+```{bash, eval=FALSE}
+methscope inspect hg38_celltype.ubjx
+```
+
+## Bundling and unbundling
+
+Wrap any model together with the MRMP it needs. By convention the bundle gets an
+`x` suffix (`.ubj` → `.ubjx`, `.ref` → `.refx`, `.updec` → `.updecx`):
+
+```{bash, eval=FALSE}
+# classifier: booster + MRMP (+ class labels, + framework mark)
+methscope bundle -m ref.mrmp -k xgboost -l labels.tsv -o model.ubjx booster.ubj
+
+# unwrap a bundle back into its parts (names derived from the bundle path)
+methscope unbundle model.ubjx          #  -> model.ubj + model.mrmp
+```
+
+## Bundle format (technical)
+
+A bundle (magic `MSBNDL1`) uses an **MRMP-first layout**: the MRMP `.cm` is the
+file *prefix* (offset 0), so YAME tools read it directly
+(`yame summary model.ubjx` works), and any subcommand that expects a
+`<ref.mrmp>` also accepts a bundle in that slot. After the MRMP come the
+container sections:
+
+- **`mrmp`** — the MRMP feature definition (a fmt2 YAME `.cm`).
+- **`kind`** — the framework mark: `xgboost` / `threshold` / `logistic` for a
+  classifier (`predict` **requires** it), or `refx` for a deconvolution
+  reference. Upscale decoders need no mark.
+- **`outcpg`** (upscale only) — a genome-wide mask of the imputed CpG locations,
+  letting `upscale` emit a whole-genome `.cg`.
+- **`model`** — the raw inner model bytes: an XGBoost UBJ booster, a
+  `methscope-linear` text spec, an `.updec` decoder, or a `.refx` signature TSV.
+
+Because the model and its MRMP travel together, predictions are reproducible and
+you never have to hand-match a loose `.mrmp` to the right model.
+
+## Models in R
+
+The MethScope R package ships built-in models — e.g.
+`Zhou2025_HumanAtlas_P1000()` and `Liu2021_MouseBrain_P1000()` — carrying their
+MRMP metadata, used the same way through `PredictCellType()`. See the
+[Get started](MethScope-Tutorial.html) tutorial and the
+[methscope-cli](methscope-cli.html) command-line guide.
