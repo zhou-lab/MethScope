@@ -1,0 +1,173 @@
+---
+title: "methscope-cli"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{methscope-cli}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+MethScope is the R package interface for MRMP-based sparse methylome analysis.
+For users who prefer a standalone command-line workflow, we also provide
+**methscope-cli**, a pure-C implementation:
+
+<https://github.com/zhou-lab/methscope-cli>
+
+methscope-cli implements the main command-line path:
+
+```text
+query .cg + MRMP reference -> cell-by-pattern matrix -> prediction/deconvolution/upscaling
+```
+
+It uses YAME for `.cg/.cm` input/output and summary computation, and links
+`libxgboost` for model inference. It does not require an R runtime.
+
+## When to Use methscope-cli
+
+Use the R package when you want an interactive analysis workflow inside R,
+including plotting, training, and integration with R objects.
+
+Use methscope-cli when you want:
+
+- command-line batch processing
+- integration into shell/HPC workflows
+- a no-R-runtime implementation
+- direct CLI prediction, matrix generation, deconvolution, or upscaling
+
+## Build methscope-cli
+
+methscope-cli depends on YAME, vendored as a git submodule, and `libxgboost` from
+conda-forge.
+
+```{bash, eval=FALSE}
+# Clone with the YAME submodule
+git clone --recurse-submodules https://github.com/zhou-lab/methscope-cli.git
+cd methscope-cli
+
+# Install libxgboost
+conda create -n methscope -c conda-forge libxgboost
+conda activate methscope
+
+# Build the CLI
+make
+```
+
+If `libxgboost` is installed outside the active conda environment, pass its
+prefix explicitly:
+
+```{bash, eval=FALSE}
+make XGB_PREFIX=/path/to/conda/env
+```
+
+The built binary is named `methscope`.
+
+## Example Commands
+
+The exact model and fixture files are documented in the methscope-cli repository.
+The commands below show the main usage pattern.
+
+### Cell-Type Prediction
+
+```{bash, eval=FALSE}
+methscope predict query.cg model.ubjx > prediction.tsv
+```
+
+Here, `query.cg` is a YAME `.cg` file and `model.ubjx` is a bundled methscope-cli
+XGBoost classifier. Model bundles can carry their own MRMP reference, so users
+do not need to pass a separate `.cm` file when using a self-contained bundle.
+
+### Generate a Feature Matrix
+
+```{bash, eval=FALSE}
+methscope matrix query.cg model_or_mrmp > input_pattern.tsv
+```
+
+This generates a sample-by-MRMP feature matrix analogous to `GenerateInput()` in
+the R package.
+
+### Deconvolution
+
+```{bash, eval=FALSE}
+methscope deconv mixture.cg reference.refx > deconv.tsv
+```
+
+The `.refx` file is a methscope-cli deconvolution reference bundle (a signature +
+its MRMP, built with `matrix --refx`). Deconvolution uses all patterns in the
+reference.
+
+### Upscaling
+
+```{bash, eval=FALSE}
+methscope upscale -o reconstructed.cg upscale_model.updecx sparse_input.cg
+```
+
+This reconstructs CpG-level methylation calls from sparse input using an
+upscaling decoder bundle.
+
+## Runnable example
+
+A complete, copy-pasteable example. It downloads a pretrained classifier and a
+small test `.cg` from the
+[methscope_data](https://github.com/zhou-lab/methscope_data) repository and runs
+cell-type prediction (assumes the `methscope` binary is on your `PATH`).
+
+```{bash, eval=FALSE}
+# fetch a classifier bundle + 4 typed test cells from methscope_data
+MD=https://raw.githubusercontent.com/zhou-lab/methscope_data/main
+wget -q $MD/models/hg38_celltype.ubjx
+wget -q $MD/test/human_hg38_celltypes.cg $MD/test/human_hg38_celltypes.cg.idx
+
+# predict cell types — the .ubjx bundle carries its own MRMP reference
+methscope predict human_hg38_celltypes.cg hg38_celltype.ubjx
+```
+
+Expected output — each query cell (named by its Loyfer 2023 ground truth) gets
+the concordant Zhou2025 label and a confidence score:
+
+```text
+cell             prediction_label  confidence
+Oligodendrocyte  ODC               0.915
+Pancreas-Beta    Beta              0.931
+Blood-NK         NK CD16           0.813
+Blood-Monocytes  Mono              0.836
+```
+
+For deconvolution, fetch the whole-body reference and a simulated mixture, then
+run `deconv`:
+
+```{bash, eval=FALSE}
+wget -q $MD/models/hg38_65celltypes.refx
+wget -q $MD/test/human_hg38_immune_mixture.cg
+methscope deconv human_hg38_immune_mixture.cg hg38_65celltypes.refx
+#   -> Macrophage ~70%, Mono ~30%   (the other ~63 cell types ~0)
+```
+
+## Relationship to the R Package
+
+The two implementations are intended to be complementary:
+
+- **MethScope R package**: interactive R analysis, plotting, training,
+  visualization, and R-based downstream workflows.
+- **methscope-cli**: standalone command-line processing for production,
+  batch, and HPC workflows.
+
+For the complete methscope-cli build instructions, model bundle formats, and test
+examples, see:
+
+<https://github.com/zhou-lab/methscope-cli>
+
+## Notes on Input Order
+
+methscope-cli emits one row per query record in query-file order. When supplying
+labels for training or evaluation, make sure the labels follow the same query
+record order. In the MethScope R package tutorial, the example labels follow the
+`.cg.idx` sample order.

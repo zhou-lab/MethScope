@@ -110,18 +110,18 @@ colored by predicted cell type.
 - End-to-end tutorial: [MethScope-Tutorial](https://zhou-lab.github.io/MethScope/articles/MethScope-Tutorial.html)
 - Preparing MethScope input files: [MethScope-Input](https://zhou-lab.github.io/MethScope/articles/MethScope-Input.html)
 - Building MRMP references: [MethScope-MRMP](https://zhou-lab.github.io/MethScope/articles/MethScope-MRMP.html)
-- C command-line implementation: [MethScope2-C-CLI](https://zhou-lab.github.io/MethScope/articles/MethScope2-C-CLI.html)
+- C command-line implementation: [methscope-cli](https://zhou-lab.github.io/MethScope/articles/methscope-cli.html)
 
 ## C command-line implementation
 
 For users who want a standalone command-line workflow without an R runtime, we
-also provide **MethScope2**, a pure-C implementation of the main MethScope
-workflows. MethScope2 uses YAME for `.cg/.cm` input/output and links
+also provide **methscope-cli**, a pure-C implementation of the main MethScope
+workflows. methscope-cli uses YAME for `.cg/.cm` input/output and links
 `libxgboost` for model inference.
 
-MethScope2 repository: [zhou-lab/MethScope2](https://github.com/zhou-lab/MethScope2)
+methscope-cli repository: [zhou-lab/methscope-cli](https://github.com/zhou-lab/methscope-cli)
 
-MethScope2 is useful for large-scale batch processing, command-line pipelines,
+methscope-cli is useful for large-scale batch processing, command-line pipelines,
 and environments where users want to run MRMP feature generation, cell-type
 prediction, deconvolution, or upscaling directly from the shell.
 
