@@ -1,0 +1,77 @@
+/* Full-width dashboard home: hide the redundant metadata sidebar */
+.template-home aside.col-md-3 { display: none; }
+.template-home main#main.col-md-9 { flex: 0 0 100%; max-width: 100%; }
+
+/* Slim, standard top navbar (match the mockup) */
+.navbar { padding-top: .25rem; padding-bottom: .25rem; min-height: 0; }
+.navbar .navbar-brand { font-size: 1rem; padding-top: .1rem; padding-bottom: .1rem; }
+.navbar .nav-link { font-size: .86rem; }
+
+/* drop the redundant "MethScope" page title (the navbar already shows it); keep the logo */
+.template-home main { padding-top: .15rem; }
+.template-home .page-header { border-bottom: 0; margin: 0; padding: 0; min-height: 0; }
+.template-home .page-header h1 { display: none; }
+.template-home .page-header img, .template-home img.logo { max-height: 96px; width: auto; }
+
+/* wider content + navbar sharing ONE width so their left/right edges align
+   (the mockup used a single .wrap for both; pkgdown splits them) */
+.container.template-home,
+.navbar > .container { max-width: 1330px; }
+
+/* ============ ported mockup dashboard (ms- prefixed, no Bootstrap clash) ============ */
+.ms-wrap { --teal:#18bc9c; --teal-d:#128f76; --ink:#2b3a45; --muted:#6b7c88;
+           --line:#e3e8ec; --card:#fff; --code:#1f2a33;
+           font-size:14px; color:var(--ink); }
+.ms-wrap a { text-decoration:none; }
+
+.ms-tag { font-size:13.5px; color:var(--muted); margin:0 0 6px; max-width:720px; }
+.ms-tag b { color:var(--ink); }
+
+.ms-badges { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 7px; }
+.ms-badge { font-size:11.5px; background:#eef2f4; color:#51616c; border:1px solid var(--line);
+            padding:2px 8px; border-radius:20px; }
+.ms-badge b { color:var(--ink); }
+
+.ms-cta { display:flex; gap:9px; flex-wrap:wrap; margin-bottom:0; }
+.ms-btn { display:inline-flex; align-items:center; gap:7px; font-weight:600; font-size:14px;
+          padding:8px 15px; border-radius:7px; border:1px solid transparent; }
+.ms-btn.primary { background:var(--teal); color:#fff; } .ms-btn.primary:hover { background:var(--teal-d); }
+.ms-btn.ghost { background:#fff; color:#2c3e50; border-color:#cdd6dc; } .ms-btn.ghost:hover { border-color:#2c3e50; }
+.ms-btn .k { font-size:11px; opacity:.7; font-weight:500; }
+
+.ms-sech { font-size:1.02rem; font-weight:700; margin:.5rem 0 .35rem; display:flex; align-items:baseline; gap:10px; color:var(--ink); }
+.ms-sech .sub { font-size:12.5px; color:var(--muted); font-weight:400; }
+
+.ms-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+/* pandoc wraps loose inline children (card/doc links) in a <p>; unwrap it so the
+   cards become direct grid/flex items again */
+.ms-grid > p, .ms-docs > p, .ms-cta > p, .ms-badges > p, .ms-two > p { display:contents; }
+.ms-card { background:var(--card); border:1px solid var(--line); border-radius:9px; padding:9px 11px;
+           display:flex; flex-direction:column; gap:3px; color:var(--ink); transition:.12s; }
+.ms-card:hover { border-color:#cbd5db; box-shadow:0 3px 10px rgba(20,40,55,.06); transform:translateY(-1px); text-decoration:none; }
+.ms-card .ic { font-size:20px; line-height:1; }
+.ms-card .h { font-weight:700; color:var(--teal-d); font-size:14.5px; margin-top:2px; }
+.ms-card .p { font-size:12.6px; color:var(--muted); flex:1; }
+.ms-card .go { font-size:12.5px; font-weight:600; color:var(--teal-d); margin-top:3px; }
+
+.ms-two { display:grid; grid-template-columns:1.1fr .9fr; gap:10px; align-items:start; }
+.ms-panel { border:1px solid var(--line); border-radius:9px; overflow:hidden; background:#fff; }
+.ms-panel .ph { display:flex; align-items:center; gap:8px; padding:8px 13px; border-bottom:1px solid var(--line);
+                font-weight:700; font-size:13.5px; }
+.ms-tagp { font-size:11px; font-weight:600; padding:1px 7px; border-radius:20px; }
+.ms-tagp.cli { background:#e7f6f1; color:var(--teal-d); } .ms-tagp.r { background:#eef1fb; color:#3b53b5; }
+.ms-pre { margin:0; padding:10px 13px; font-size:12.4px; line-height:1.5; overflow:auto;
+          font-family:SFMono-Regular,Menlo,Consolas,monospace; border:0; }
+.ms-pre.dark { background:var(--code); color:#e6edf3; }
+.ms-pre.dark .c { color:#7d8b98; } .ms-pre.dark .p { color:#7ee0c4; }
+.ms-pre.lite { background:#f4f6f8; color:#233; }
+.ms-pre.lite .c { color:#8b98a3; } .ms-pre.lite .fn { color:var(--teal-d); font-weight:600; }
+.ms-foot { padding:6px 13px; border-top:1px solid var(--line); font-size:12px; background:#fff; }
+.ms-foot a { color:var(--teal-d); font-weight:600; }
+
+.ms-docs { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.ms-doc { border:1px solid var(--line); border-radius:8px; padding:8px 11px; background:#fff;
+          display:flex; flex-direction:column; gap:1px; color:var(--ink); }
+.ms-doc:hover { border-color:#cbd5db; text-decoration:none; }
+.ms-doc .t { font-weight:600; font-size:13.5px; color:var(--teal-d); }
+.ms-doc .d { font-size:12px; color:var(--muted); }

@@ -1,10 +1,9 @@
-pandoc: '3.10'
-pkgdown: 2.0.9
+pandoc: 3.1.11
+pkgdown: 2.1.3
 pkgdown_sha: ~
 articles:
+  methscope-cli: methscope-cli.html
   MethScope-Input: MethScope-Input.html
   MethScope-MRMP: MethScope-MRMP.html
   MethScope-Tutorial: MethScope-Tutorial.html
-  MethScope2-C-CLI: MethScope2-C-CLI.html
-last_built: 2026-07-05T20:55Z
-
+last_built: 2026-07-08T03:57Z

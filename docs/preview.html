@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MethScope</title>
+<style>
+  :root{
+    --navy:#2c3e50; --navy2:#22303d; --teal:#18bc9c; --teal-d:#128f76;
+    --ink:#2b3a45; --muted:#6b7c88; --line:#e3e8ec; --bg:#f6f8f9; --card:#fff;
+    --code:#1f2a33;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       font-size:14px;line-height:1.5;color:var(--ink);background:var(--bg)}
+  a{color:var(--teal-d);text-decoration:none} a:hover{text-decoration:underline}
+  code,pre{font-family:"SFMono-Regular",Menlo,Consolas,monospace}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+  /* navbar */
+  .nav{background:var(--navy);color:#fff}
+  .nav .wrap{display:flex;align-items:center;gap:20px;height:40px}
+  .nav .brand{font-weight:700;font-size:15.5px;color:#fff}
+  .nav .brand .v{font-size:11px;font-weight:500;color:#9fb3c0;margin-left:6px}
+  .nav a.link{color:#cfd9e0;font-size:13.5px} .nav a.link:hover{color:#fff;text-decoration:none}
+  .nav .spacer{flex:1}
+  .nav .pill{background:var(--teal);color:#083;color:#04352b;font-weight:600;font-size:11px;
+             padding:2px 8px;border-radius:20px}
+
+  /* hero */
+  .hero{background:linear-gradient(180deg,#fff, var(--bg));border-bottom:1px solid var(--line);
+        padding:13px 0 12px}
+  .hero h1{font-size:22px;margin:0 0 3px;letter-spacing:-.4px}
+  .hero .tag{font-size:13.5px;color:var(--muted);margin:0 0 9px;max-width:680px}
+  .hero .tag b{color:var(--ink)}
+  .badges{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+  .badge{font-size:11.5px;background:#eef2f4;color:#51616c;border:1px solid var(--line);
+         padding:3px 9px;border-radius:20px}
+  .badge b{color:var(--ink)}
+  .cta{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:14px;
+       padding:9px 16px;border-radius:7px;border:1px solid transparent;cursor:pointer}
+  .btn.primary{background:var(--teal);color:#fff} .btn.primary:hover{background:var(--teal-d);text-decoration:none}
+  .btn.ghost{background:#fff;color:var(--navy);border-color:#cdd6dc} .btn.ghost:hover{border-color:var(--navy);text-decoration:none}
+  .btn .k{font-size:11px;opacity:.7;font-weight:500}
+
+  /* section */
+  section{padding:15px 0}
+  .sec-h{display:flex;align-items:baseline;gap:12px;margin:0 0 9px}
+  .sec-h h2{font-size:19px;margin:0}
+  .sec-h .sub{font-size:13px;color:var(--muted)}
+  .sec-h .more{margin-left:auto;font-size:13px}
+
+  /* app cards */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:11px 13px;
+        display:flex;flex-direction:column;gap:4px;transition:.12s}
+  .card:hover{border-color:#cbd5db;box-shadow:0 3px 10px rgba(20,40,55,.06);transform:translateY(-1px)}
+  .card .ic{font-size:20px;line-height:1}
+  .card h3{font-size:14.5px;margin:2px 0 0}
+  .card p{font-size:12.8px;color:var(--muted);margin:0;flex:1}
+  .card .go{font-size:12.5px;font-weight:600;margin-top:4px}
+
+  /* two ways */
+  .two{display:grid;grid-template-columns:1.1fr .9fr;gap:12px;align-items:start}
+  .panel{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+  .panel .ph{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--line);
+             font-weight:700;font-size:13.5px}
+  .panel .ph .tagp{font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px}
+  .tagp.cli{background:#e7f6f1;color:var(--teal-d)} .tagp.r{background:#eef1fb;color:#3b53b5}
+  pre{margin:0;padding:13px 14px;font-size:12.6px;line-height:1.55;overflow:auto}
+  pre.dark{background:var(--code);color:#e6edf3}
+  pre.dark .c{color:#7d8b98} pre.dark .p{color:#7ee0c4} pre.dark .a{color:#d2a8ff}
+  pre.lite{background:#f4f6f8;color:#233}
+  pre.lite .c{color:#8b98a3} pre.lite .fn{color:var(--teal-d);font-weight:600}
+
+  /* docs strip */
+  .docs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .doc{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:8px;
+       padding:11px 13px;background:#fff}
+  .doc:hover{border-color:#cbd5db;text-decoration:none}
+  .doc .t{font-weight:600;font-size:13.5px;color:var(--ink)}
+  .doc .d{font-size:12px;color:var(--muted)}
+
+  footer{border-top:1px solid var(--line);background:#fff;padding:12px 0;color:var(--muted);font-size:12.5px}
+  footer .wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+</style>
+</head>
+<body>
+
+<div class="nav"><div class="wrap">
+  <span class="brand">MethScope <span class="v">1.0.3</span></span>
+  <a class="link" href="#apps">Applications</a>
+  <a class="link" href="articles/methscope-cli.html">Command line</a>
+  <a class="link" href="articles/MethScope-Tutorial.html">R package</a>
+  <a class="link" href="articles/index.html">Docs</a>
+  <a class="link" href="reference/index.html">Reference</a>
+  <span class="spacer"></span>
+  <a class="link" href="https://github.com/zhou-lab/MethScope">GitHub</a>
+</div></div>
+
+<div class="hero"><div class="wrap">
+  <h1>MethScope</h1>
+  <p class="tag">Analysis of DNA methylomes via Most Recurrent Methylation Patterns (MRMPs) — annotate,
+     deconvolve, impute, and embed bulk, single-cell &amp; spatial data, uniquely robust on
+     <b>sparse &amp; ultra-sparse</b> inputs.</p>
+  <div class="badges">
+    <span class="badge"><b>R</b> package + <b>C</b> CLI</span>
+    <span class="badge">CRAN <b>1.0.3</b></span>
+    <span class="badge">R &ge; 4.0</span>
+    <span class="badge">AGPL-3.0</span>
+    <span class="badge">no-GPU</span>
+  </div>
+  <div class="cta">
+    <a class="btn primary" href="#run">⌨ Command line <span class="k">conda · soon</span></a>
+    <a class="btn ghost" href="#run">📦 R package <span class="k">install.packages</span></a>
+  </div>
+</div></div>
+
+<section id="apps"><div class="wrap">
+  <div class="sec-h"><h2>Applications</h2><span class="sub">what MethScope does</span>
+    <a class="more" href="articles/MethScope-Tutorial.html">Tutorial →</a></div>
+  <div class="grid">
+    <a class="card" href="articles/MethScope-Tutorial.html"><span class="ic">🧬</span><h3>Cell-type annotation</h3>
+      <p>Label sparse single cells against an MRMP reference with confidence scores.</p>
+      <span class="go">predict →</span></a>
+    <a class="card" href="articles/MethScope-Tutorial.html"><span class="ic">🩸</span><h3>Deconvolution</h3>
+      <p>Estimate cell-type proportions in mini-bulk / cfDNA mixtures (NNLS).</p>
+      <span class="go">deconv →</span></a>
+    <a class="card" href="articles/MethScope-Tutorial.html"><span class="ic">🧩</span><h3>Imputation &amp; upscaling</h3>
+      <p>Reconstruct CpG-level methylation from ultra-sparse input.</p>
+      <span class="go">upscale →</span></a>
+    <a class="card" href="articles/MethScope-Tutorial.html"><span class="ic">🗺️</span><h3>Clustering &amp; embedding</h3>
+      <p>MRMP representations for UMAP, clustering, and structure discovery.</p>
+      <span class="go">matrix →</span></a>
+  </div>
+</div></section>
+
+<section id="run" style="background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+<div class="wrap">
+  <div class="sec-h"><h2>Two ways to run</h2><span class="sub">same MRMP models, shell or R</span></div>
+  <div class="two">
+    <div class="panel">
+      <div class="ph">⌨ Command line <span class="tagp cli">methscope-cli · no R runtime</span></div>
+<pre class="dark"><span class="c"># install — conda package coming soon (no R runtime)</span>
+conda install -c bioconda methscope-cli
+
+<span class="c"># featurize + classify a sparse .cg against a bundled model</span>
+methscope <span class="p">predict</span> query.cg model.ubjx &gt; labels.tsv
+
+<span class="c"># cell-type proportions of a mixture</span>
+methscope <span class="p">deconv</span> mixture.cg panel.refx &gt; props.tsv
+
+<span class="c"># reconstruct dense methylation from sparse input</span>
+methscope <span class="p">upscale</span> -o out.cg model.updecx query.cg</pre>
+    </div>
+    <div class="panel">
+      <div class="ph">📦 R package <span class="tagp r">interactive · plotting</span></div>
+<pre class="lite"><span class="c"># annotate + visualize in R</span>
+x  &lt;- <span class="fn">GenerateInput</span>(cg, mrmp)
+m  &lt;- <span class="fn">Zhou2025_HumanAtlas_P1000</span>()
+p  &lt;- <span class="fn">PredictCellType</span>(m, x)
+<span class="fn">PlotUMAP</span>(x, p)</pre>
+    </div>
+  </div>
+</div></section>
+
+<section id="docs"><div class="wrap">
+  <div class="sec-h"><h2>Documentation</h2><span class="sub">go deeper</span></div>
+  <div class="docs">
+    <a class="doc" href="articles/MethScope-Tutorial.html"><span class="t">Get started →</span><span class="d">end-to-end tutorial</span></a>
+    <a class="doc" href="articles/MethScope-Input.html"><span class="t">Input files →</span><span class="d">BED / ALLC / bigwig → .cg</span></a>
+    <a class="doc" href="articles/MethScope-MRMP.html"><span class="t">MRMP references →</span><span class="d">build & interpret patterns</span></a>
+    <a class="doc" href="reference/index.html"><span class="t">Function reference →</span><span class="d">all exported functions</span></a>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <a href="https://cran.r-project.org/package=MethScope">CRAN</a>
+  <span>·</span><a href="https://github.com/zhou-lab/MethScope">GitHub</a>
+  <span>·</span><a href="authors.html">Citation</a>
+  <span>·</span><a href="reference/index.html">Reference</a>
+  <span class="spacer" style="flex:1"></span>
+  <span>AGPL-3.0 © 2025 Hongxiang Fu &amp; Wanding Zhou</span>
+</div></footer>
+
+</body>
+</html>
