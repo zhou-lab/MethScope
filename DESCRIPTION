@@ -18,7 +18,7 @@ Description: Methods for analyzing DNA methylation data via Most Recurrent
     odds ratios, beta/depth aggregation), an XGBoost classifier, NNLS
     deconvolution, and plotting utilities. Scales to large spatial and
     single-cell methylomes and is robust to extreme sparsity.
-License: MIT + file LICENSE
+License: AGPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
