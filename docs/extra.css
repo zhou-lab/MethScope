@@ -8,7 +8,7 @@
 .navbar .nav-link { font-size: .86rem; }
 
 /* drop the redundant "MethScope" page title (the navbar already shows it); keep the logo */
-.template-home main { padding-top: .15rem; }
+.template-home main { padding-top: 0; }
 .template-home .page-header { border-bottom: 0; margin: 0; padding: 0; min-height: 0; }
 .template-home .page-header h1 { display: none; }
 .template-home .page-header img, .template-home img.logo { max-height: 96px; width: auto; }
@@ -69,7 +69,7 @@
 .ms-foot { padding:6px 13px; border-top:1px solid var(--line); font-size:12px; background:#fff; }
 .ms-foot a { color:var(--teal-d); font-weight:600; }
 
-.ms-docs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.ms-docs { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
 .ms-doc { border:1px solid var(--line); border-radius:8px; padding:8px 11px; background:#fff;
           display:flex; flex-direction:column; gap:1px; color:var(--ink); }
 .ms-doc:hover { border-color:#cbd5db; text-decoration:none; }
