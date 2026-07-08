@@ -1,6 +1,36 @@
 url: ~
 template:
   bootstrap: 5
+  bslib:
+    font_scale: 0.85
+    h1-font-size: 1.8rem
+    h2-font-size: 1.45rem
+    h3-font-size: 1.2rem
+    h4-font-size: 1.05rem
+    h5-font-size: 0.95rem
+    h6-font-size: 0.85rem
   params:
     bootswatch: flatly
     logo: man/figures/logo.svg
+
+navbar:
+  structure:
+    left:  [applications, cli, rpkg, docs, reference]
+    right: [github]
+  components:
+    applications:
+      text: Applications
+      href: index.html#applications
+    cli:
+      text: Command line
+      href: articles/methscope-cli.html
+    rpkg:
+      text: R package
+      href: articles/MethScope-Tutorial.html
+    docs:
+      text: Docs
+      href: articles/index.html
+    github:
+      icon: fa-github
+      href: https://github.com/zhou-lab/MethScope
+      aria-label: GitHub

@@ -1,82 +1,37 @@
 # MethScope
 
-**MethScope** is an R package for ultra-fast analysis of sparse DNA methylome data using **Most Recurrent Methylation Patterns (MRMPs)**.
-
-It supports downstream analysis for cell type annotation, cell type deconvolution, unsupervised clustering, cancer cell-of-origin prediction, and missing value imputation.
-
-<p align="center">
-  <img src="reference/figures/overview.png" alt="MethScope workflow overview" width="980">
-</p>
-
-## Method Overview
-
-Sparse single-cell and spatial methylome data are often too sparse to analyze directly at individual CpG resolution. MethScope converts high-dimensional methylation atlas signals into compact MRMP features, then uses these features for fast downstream modeling.
-
-Core workflow:
-
-- Binarize methylation atlas profiles and consolidate recurrent methylation patterns
-- Select top recurrent methylation patterns as MRMP features
-- Encode each sample, cell, or spatial pixel into an MRMP-based representation
-- Run downstream modeling for annotation, deconvolution, imputation, and representation learning
-
-## Supported Workflows
-
-- Cell-type annotation in sparse single-cell methylome profiles
-- Mini-bulk deconvolution for mixed-cell samples
-- Missing-value imputation for sparse CpG measurements
-- Representation learning for clustering and embedding analysis
-- Cancer cell-of-origin prediction
-
-## Data Preparation
-
-MethScope uses YAME `.cg` files as methylation input. If your data are currently
-stored as BED-like methylation calls, ALLC files, beta/fraction tables, or binary
-tracks, see the conversion tutorial:
-
-- [MethScope-Input](articles/MethScope-Input.html)
-
-## Quick Start
-
-```r
-library(MethScope)
-
-# Run this from the root of a cloned zhou-lab/MethScope repository.
-example_file      <- "inst/extdata/example.cg"
-reference_pattern <- "inst/extdata/mm10_Liu2021.cm"
-
-input_pattern <- GenerateInput(example_file, reference_pattern)
-
-model <- Liu2021_MouseBrain_P1000()
-prediction_result <- PredictCellType(model, input_pattern)
-```
-
-The GitHub repository includes `inst/extdata/example.cg` for functional testing and cell-type prediction. CRAN packages have size limits, so the CRAN release contains only tiny toy files.
-
-GitHub reference `.cm` files are named by genome build and source dataset:
-
-- `inst/extdata/mm10_Liu2021.cm`: mouse brain MRMP reference
-- `inst/extdata/hg38_Zhou2025.cm`: human atlas MRMP reference
-- `inst/extdata/hg38_Loyfer2023.cm`: human atlas MRMP reference from Loyfer et al.
-
-The full `mm10_Liu2021.cm` reference contains more than 1000 MRMPs; the built-in mouse brain model uses the first 1000 patterns.
-
-## Installation
-
-Install from CRAN:
-
-```r
+<div class="ms-wrap">
+<p class="ms-tag">Analysis of DNA methylomes via Most Recurrent Methylation Patterns (MRMPs) — annotate, deconvolve, impute, and embed bulk, single-cell &amp; spatial data, uniquely robust on <b>sparse &amp; ultra-sparse</b> inputs.</p>
+<div class="ms-badges"><span class="ms-badge"><b>R</b> package + <b>C</b> CLI</span><span class="ms-badge">CRAN <b>1.0.3</b></span><span class="ms-badge">R &ge; 4.0</span><span class="ms-badge">AGPL-3.0</span><span class="ms-badge">no-GPU</span></div>
+<div class="ms-cta"><a class="ms-btn primary" href="articles/methscope-cli.html">⌨ Command line <span class="k">conda · soon</span></a><a class="ms-btn ghost" href="articles/MethScope-Tutorial.html">📦 R package</a><a class="ms-btn ghost" href="https://github.com/zhou-lab/methscope_data">🗂 Pretrained models</a></div>
+<div class="ms-sech" id="applications">Applications <span class="sub">what MethScope does</span></div>
+<div class="ms-grid">
+<a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🧬</span><span class="h">Cell-type annotation</span><span class="p">Label single cells against an MRMP reference with confidence scores.</span><span class="go">predict →</span></a>
+<a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🩸</span><span class="h">Deconvolution</span><span class="p">Estimate cell-type proportions in mini-bulk / cfDNA mixtures (NNLS).</span><span class="go">deconv →</span></a>
+<a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🧩</span><span class="h">Imputation &amp; upscaling</span><span class="p">Reconstruct CpG-level methylation from ultra-sparse input.</span><span class="go">upscale →</span></a>
+<a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🗺️</span><span class="h">Clustering &amp; embedding</span><span class="p">MRMP representations for UMAP, clustering, and structure discovery.</span><span class="go">matrix →</span></a>
+</div>
+<div class="ms-sech">Two ways to run <span class="sub">same MRMP models, shell or R</span></div>
+<div class="ms-two">
+<div class="ms-panel"><div class="ph">⌨ Command line <span class="ms-tagp cli">methscope-cli · no R runtime</span></div><pre class="ms-pre dark"><span class="c"># install — conda package coming soon (no R runtime)</span>
+conda install -c bioconda methscope-cli
+<span class="c"># annotate · deconvolve · impute</span>
+methscope <span class="p">predict</span> query.cg model.ubjx &gt; labels.tsv
+methscope <span class="p">deconv</span>  mixture.cg panel.refx &gt; props.tsv
+methscope <span class="p">upscale</span> -o out.cg model.updecx query.cg</pre><div class="ms-foot"><a href="articles/methscope-cli.html#runnable-example">▸ runnable examples →</a></div></div>
+<div class="ms-panel"><div class="ph">📦 R package <span class="ms-tagp r">interactive · plotting</span></div><pre class="ms-pre lite"><span class="c"># install (CRAN)</span>
 install.packages("MethScope")
-```
-
-Or install the development version from GitHub:
-
-```r
-# install.packages("devtools")
-devtools::install_github("zhou-lab/MethScope")
-```
-
-## System Requirements
-
-- **R** >= 4.0
-- **System library**: `zlib`
-- **Operating systems tested**: macOS, Linux (Ubuntu)
+<span class="c"># annotate + visualize in R</span>
+x &lt;- <a class="fn" href="reference/GenerateInput.html">GenerateInput</a>(cg, mrmp)
+m &lt;- <a class="fn" href="reference/Zhou2025_HumanAtlas_P1000.html">Zhou2025_HumanAtlas_P1000</a>()
+p &lt;- <a class="fn" href="reference/PredictCellType.html">PredictCellType</a>(m, x)
+<a class="fn" href="reference/PlotUMAP.html">PlotUMAP</a>(x, p)</pre></div>
+</div>
+<div class="ms-sech">Documentation <span class="sub">go deeper</span></div>
+<div class="ms-docs">
+<a class="ms-doc" href="articles/MethScope-Tutorial.html"><span class="t">Get started →</span><span class="d">end-to-end tutorial</span></a>
+<a class="ms-doc" href="articles/MethScope-Input.html"><span class="t">Input files →</span><span class="d">BED / ALLC / bigwig → .cg</span></a>
+<a class="ms-doc" href="articles/MethScope-MRMP.html"><span class="t">MRMP references →</span><span class="d">build &amp; interpret patterns</span></a>
+<a class="ms-doc" href="reference/index.html"><span class="t">Function reference →</span><span class="d">all exported functions</span></a>
+</div>
+</div>
