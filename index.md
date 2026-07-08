@@ -2,7 +2,7 @@
 
 <div class="ms-wrap">
 <p class="ms-tag">Analysis of DNA methylomes via Most Recurrent Methylation Patterns (MRMPs) — annotate, deconvolve, impute, and embed bulk, single-cell &amp; spatial data, uniquely robust on <b>sparse &amp; ultra-sparse</b> inputs.</p>
-<div class="ms-badges"><span class="ms-badge"><b>R</b> package + <b>C</b> CLI</span><span class="ms-badge">CRAN <b>1.0.3</b></span><span class="ms-badge">R &ge; 4.0</span><span class="ms-badge">AGPL-3.0</span><span class="ms-badge">no-GPU</span></div>
+<div class="ms-badges"><span class="ms-badge"><b>C</b> CLI + <b>R</b> package</span><span class="ms-badge">CRAN <b>1.0.3</b></span><span class="ms-badge">R &ge; 4.0</span><span class="ms-badge">AGPL-3.0</span><span class="ms-badge">no-GPU</span></div>
 <div class="ms-cta"><a class="ms-btn primary" href="articles/methscope-cli.html">⌨ Command line <span class="k">conda · soon</span></a><a class="ms-btn ghost" href="https://cran.r-project.org/package=MethScope">📦 R package</a><a class="ms-btn ghost" href="https://github.com/zhou-lab/methscope_data">🗂 Pretrained models</a></div>
 <div class="ms-sech" id="applications">Applications <span class="sub">what MethScope does</span></div>
 <div class="ms-grid">
