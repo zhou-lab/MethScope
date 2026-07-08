@@ -66,13 +66,13 @@ Analysis of DNA methylomes via Most Recurrent Methylation Patterns (MRMPs) — a
 <span class="ms-badge"><b>R</b> package + <b>C</b> CLI</span><span class="ms-badge">CRAN <b>1.0.3</b></span><span class="ms-badge">R ≥ 4.0</span><span class="ms-badge">AGPL-3.0</span><span class="ms-badge">no-GPU</span>
 </div>
 <div class="ms-cta">
-<a class="ms-btn primary" href="articles/methscope-cli.html">⌨ Command line <span class="k">conda · soon</span></a><a class="ms-btn ghost" href="articles/MethScope-Tutorial.html">📦 R package</a><a class="external-link ms-btn ghost" href="https://github.com/zhou-lab/methscope_data">🗂 Pretrained models</a>
+<a class="ms-btn primary" href="articles/methscope-cli.html">⌨ Command line <span class="k">conda · soon</span></a><a class="external-link ms-btn ghost" href="https://cran.r-project.org/package=MethScope">📦 R package</a><a class="external-link ms-btn ghost" href="https://github.com/zhou-lab/methscope_data">🗂 Pretrained models</a>
 </div>
 <div id="applications" class="ms-sech">
 Applications <span class="sub">what MethScope does</span>
 </div>
 <div class="ms-grid">
-<p><a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🧬</span><span class="h">Cell-type annotation</span><span class="p">Label single cells against an MRMP reference with confidence scores.</span><span class="go">predict →</span></a> <a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🩸</span><span class="h">Deconvolution</span><span class="p">Estimate cell-type proportions in mini-bulk / cfDNA mixtures (NNLS).</span><span class="go">deconv →</span></a> <a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🧩</span><span class="h">Imputation &amp; upscaling</span><span class="p">Reconstruct CpG-level methylation from ultra-sparse input.</span><span class="go">upscale →</span></a> <a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🗺️</span><span class="h">Clustering &amp; embedding</span><span class="p">MRMP representations for UMAP, clustering, and structure discovery.</span><span class="go">matrix →</span></a></p>
+<p><a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🧬</span><span class="h">Sparse methylome annotation</span><span class="p">Predict cell type, sex, age and other traits from sparse methylomes, with confidence.</span><span class="go">predict →</span></a> <a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🩸</span><span class="h">Deconvolution</span><span class="p">Estimate cell-type proportions in mini-bulk / cfDNA mixtures (NNLS).</span><span class="go">deconv →</span></a> <a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🧩</span><span class="h">Imputation &amp; upscaling</span><span class="p">Reconstruct CpG-level methylation from ultra-sparse input.</span><span class="go">upscale →</span></a> <a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🗺️</span><span class="h">Clustering &amp; embedding</span><span class="p">MRMP representations for UMAP, clustering, and structure discovery.</span><span class="go">matrix →</span></a></p>
 </div>
 <div class="ms-sech">
 Two ways to run <span class="sub">same MRMP models, shell or R</span>
@@ -103,13 +103,16 @@ x &lt;- <a class="fn" href="reference/GenerateInput.html">GenerateInput</a>(cg, 
 m &lt;- <a class="fn" href="reference/Zhou2025_HumanAtlas_P1000.html">Zhou2025_HumanAtlas_P1000</a>()
 p &lt;- <a class="fn" href="reference/PredictCellType.html">PredictCellType</a>(m, x)
 <a class="fn" href="reference/PlotUMAP.html">PlotUMAP</a>(x, p)</pre>
+<div class="ms-foot">
+<a href="articles/MethScope-Tutorial.html">▸ runnable example →</a>
+</div>
 </div>
 </div>
 <div class="ms-sech">
 Documentation <span class="sub">go deeper</span>
 </div>
 <div class="ms-docs">
-<p><a class="ms-doc" href="articles/MethScope-Tutorial.html"><span class="t">Get started →</span><span class="d">end-to-end tutorial</span></a> <a class="ms-doc" href="articles/MethScope-Input.html"><span class="t">Input files →</span><span class="d">BED / ALLC / bigwig → .cg</span></a> <a class="ms-doc" href="articles/MethScope-MRMP.html"><span class="t">MRMP references →</span><span class="d">build &amp; interpret patterns</span></a> <a class="ms-doc" href="reference/index.html"><span class="t">Function reference →</span><span class="d">all exported functions</span></a></p>
+<p><a class="ms-doc" href="articles/MethScope-Input.html"><span class="t">Prepare input files →</span><span class="d">BED / ALLC / bigwig → .cg</span></a> <a class="ms-doc" href="articles/MethScope-MRMP.html"><span class="t">Build &amp; interpret MRMPs →</span><span class="d">recurrent methylation patterns</span></a> <a class="ms-doc" href="reference/index.html"><span class="t">Function reference →</span><span class="d">all exported functions</span></a></p>
 </div>
 </div>
 </div>
