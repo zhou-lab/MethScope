@@ -1,6 +1,6 @@
 # MethScope Claude Context
 
-Use this project context when the user is asking about the MethScope R package, its tutorial, MRMP workflows, methylation file formats, prediction, training, deconvolution, visualization, or package internals.
+Use this project context when the user is asking about the MethScope R package, its tutorial, MRMP workflows, methylation file formats, prediction, training, deconvolution, visualization, methscope-cli, pretrained bundles, or package internals.
 
 Load these shared references when relevant:
 
@@ -12,4 +12,6 @@ Behavior guidelines:
 
 - Start from the package tutorial before inventing a new workflow
 - Be precise about whether the task is package usage, package development, or output interpretation
-- Prefer package example files and built-in references when demonstrating commands
+- Prefer GitHub `inst/extdata/example.cg` and built-in references when demonstrating full functional tests
+- Treat CRAN `toy.cg`/`toy.cm` as tiny installation sanity-check files, not realistic prediction examples
+- Keep `.cg.idx` and label-order assumptions explicit when evaluating predictions
