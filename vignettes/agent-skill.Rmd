@@ -1,0 +1,114 @@
+---
+title: "Using the MethScope agent skill"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Using the MethScope agent skill}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+The MethScope repository includes an optional agent skill under
+`agent-skills/methscope/`. The skill gives coding agents project-specific
+context for MethScope package usage, documentation, `.cg` and `.cm` input files,
+MRMP embeddings, cell-type prediction, model training, deconvolution,
+visualization, input conversion, and the `methscope-cli` command-line
+implementation.
+
+Use the skill when you want an agent to follow the MethScope documentation and
+repository conventions instead of giving generic methylation-analysis advice.
+
+## Install for Codex
+
+From the root of a cloned `zhou-lab/MethScope` repository, copy the Codex skill
+entry point and shared MethScope context into your Codex skills directory.
+
+```{bash, eval=FALSE}
+mkdir -p "$CODEX_HOME/skills/methscope"
+cp agent-skills/methscope/codex/SKILL.md "$CODEX_HOME/skills/methscope/SKILL.md"
+cp -R agent-skills/methscope/core "$CODEX_HOME/skills/methscope/core"
+```
+
+The installed layout should look like this:
+
+```text
+$CODEX_HOME/skills/methscope/
+  SKILL.md
+  core/
+    INSTRUCTIONS.md
+    REFERENCES.md
+    WORKFLOWS.md
+```
+
+After installation, start a new Codex session or reload the available skills.
+Then ask Codex to use the MethScope skill for MethScope-specific tasks.
+
+## Example Codex prompts
+
+```text
+Use the MethScope skill to help me test GenerateInput with inst/extdata/example.cg.
+```
+
+```text
+Use the MethScope skill to explain how to convert an ALLC file to a MethScope .cg file.
+```
+
+```text
+Use the MethScope skill to debug a PredictCellType shape mismatch.
+```
+
+```text
+Use the MethScope skill to update the deconvolution tutorial for bundled reference matrices.
+```
+
+## Install for Claude-style project context
+
+For Claude or other agents that use repository-level project instructions, use:
+
+```text
+agent-skills/methscope/claude/CLAUDE.md
+```
+
+If your project already has a `CLAUDE.md`, copy the MethScope-specific guidance
+from that file into your existing instructions. If your project does not already
+have one, use `agent-skills/methscope/claude/CLAUDE.md` as the starting project
+context.
+
+Keep the shared files in `agent-skills/methscope/core/`, because the Claude
+instructions point to the same package-specific references used by the Codex
+skill.
+
+## What the skill knows
+
+The shared MethScope skill context includes:
+
+- The difference between GitHub full example data and CRAN toy data
+- The role of `.cg`, `.cg.idx`, `.cm`, and bundled reference `.rds` files
+- Standard workflows for `GenerateInput()`, `PredictCellType()`,
+  `Input_training()`, `PlotUMAP()`, `PlotConfusion()`, `PlotF1()`, and
+  `nnls_deconv()`
+- Guidance for using `example_label.csv` with `.cg.idx` sample order
+- Input conversion pointers for BED-like, ALLC, beta/fraction, and binary tracks
+- The relationship between the MethScope R package and `methscope-cli`
+- `methscope-cli` bundle types: `.ubjx`, `.refx`, and `.updecx`
+
+## Update the skill
+
+When MethScope documentation or package behavior changes, update the source
+files in:
+
+```text
+agent-skills/methscope/
+```
+
+Then reinstall or recopy the skill into your local agent configuration. The
+repository copy is the source of truth.
+
