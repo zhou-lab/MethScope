@@ -2,8 +2,8 @@
 
 <div class="ms-wrap">
 <p class="ms-tag">Analysis of DNA methylomes via Most Recurrent Methylation Patterns (MRMPs) — annotate, deconvolve, impute, and embed bulk, single-cell &amp; spatial data, uniquely robust on <b>sparse &amp; ultra-sparse</b> inputs.</p>
-<div class="ms-badges"><span class="ms-badge"><b>C</b> CLI + <b>R</b> package</span><span class="ms-badge">CRAN <b>1.0.3</b></span><span class="ms-badge">R &ge; 4.0</span><span class="ms-badge">AGPL-3.0</span><span class="ms-badge">no-GPU</span></div>
-<div class="ms-cta"><a class="ms-btn primary" href="articles/methscope-cli.html">⌨ Command line <span class="k">conda · soon</span></a><a class="ms-btn ghost" href="https://cran.r-project.org/package=MethScope">📦 R package</a><a class="ms-btn ghost" href="https://github.com/zhou-lab/methscope_data">🗂 Pretrained models</a></div>
+<div class="ms-badges"><span class="ms-badge"><b>C</b> CLI + <b>R</b> package</span><span class="ms-badge">conda <b>0.1.1</b></span><span class="ms-badge">CRAN <b>1.0.3</b></span><span class="ms-badge">R &ge; 4.0</span><span class="ms-badge">AGPL-3.0</span><span class="ms-badge">no-GPU</span></div>
+<div class="ms-cta"><span class="ms-install"><button class="cmd" type="button" data-cmd="conda install -c zhou-lab -c conda-forge methscope-cli" title="Copy to clipboard"><span class="ico"></span>conda install -c zhou-lab -c conda-forge methscope-cli</button><a class="ana" href="https://anaconda.org/zhou-lab/methscope-cli" title="anaconda.org/zhou-lab/methscope-cli" rel="noopener">↗</a></span><a class="ms-btn ghost" href="https://cran.r-project.org/package=MethScope">📦 R package</a><a class="ms-btn ghost" href="https://github.com/zhou-lab/methscope_data">🗂 Pretrained models</a></div>
 <div class="ms-sech" id="applications">Applications <span class="sub">what MethScope does</span></div>
 <div class="ms-grid">
 <a class="ms-card" href="articles/MethScope-Tutorial.html"><span class="ic">🧬</span><span class="h">Sparse methylome annotation</span><span class="p">Predict cell type, sex, age and other traits from sparse methylomes, with confidence.</span><span class="go">predict →</span></a>
@@ -13,8 +13,8 @@
 </div>
 <div class="ms-sech">Two ways to run <span class="sub">same MRMP models, shell or R</span></div>
 <div class="ms-two">
-<div class="ms-panel"><div class="ph">⌨ Command line <span class="ms-tagp cli">methscope-cli · no R runtime</span></div><pre class="ms-pre dark"><span class="c"># install — conda package coming soon (no R runtime)</span>
-conda install -c bioconda methscope-cli
+<div class="ms-panel"><div class="ph">⌨ Command line <span class="ms-tagp cli">methscope-cli · no R runtime</span></div><pre class="ms-pre dark"><span class="c"># install (no R runtime)</span>
+conda install -c zhou-lab -c conda-forge methscope-cli
 <span class="c"># annotate · deconvolve · impute</span>
 methscope <span class="p">predict</span> query.cg model.ubjx &gt; labels.tsv
 methscope <span class="p">deconv</span>  mixture.cg panel.refx &gt; props.tsv
